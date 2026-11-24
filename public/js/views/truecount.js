@@ -1,35 +1,51 @@
-// True Count: convert a running count using the discard tray.
-import { h, signed, numberField, head, field, select, trayEl, typingInField } from '../ui.js';
-import { SYSTEMS, trueCount, randInt, TC_MODES } from '../cards.js';
-import { pushHistory } from '../store.js';
+// True count drill (mode 3).
+import { h, signed, secs, numberField, head, field, select, trayEl, typingInField } from '../ui.js';
+import { RULES, randInt, trueCount, decksEstimate } from '../cards.js';
+import { addRun } from '../store.js';
+
+export const TC_ERRORS = {
+  rounding: 'Rounding (should round down)',
+  played: 'Divided by decks played, not remaining',
+  estimate: 'Decks estimate off by ½ deck or more',
+  sign: 'Sign flipped',
+  other: 'Other',
+};
+
+export function classifyTC(guess, rc, remainingDecks) {
+  const raw = rc / remainingDecks;
+  if (guess === Math.round(raw) || guess === Math.trunc(raw) || guess === Math.ceil(raw)) return 'rounding';
+  const played = RULES.decks - remainingDecks;
+  if (played > 0 && guess === Math.floor(rc / played)) return 'played';
+  for (const d of [remainingDecks - 0.5, remainingDecks + 0.5, remainingDecks - 1, remainingDecks + 1]) {
+    if (d > 0 && guess === trueCount(rc, d)) return 'estimate';
+  }
+  if (guess === -trueCount(rc, remainingDecks)) return 'sign';
+  return 'other';
+}
 
 export function mount(root, ctx) {
-  const S = ctx.settings;
-  const cfg = S.tcDrill;
+  const cfg = ctx.settings.tcDrill;
   const st = ctx.stats.truecount;
-  const sys = SYSTEMS[S.system];
   let prob = null;
   let answered = false;
 
-  const area = h('div', { class: 'tc-area' });
+  const area = h('div');
   const result = h('div', { class: 'answer' });
   const record = h('div', { class: 'mini-stats' });
 
   root.append(h('section', { class: 'view' },
-    head('True Count', `Divide the running count by the decks still in the shoe — estimate those from the discard tray (ticks mark each deck). Rounding: ${TC_MODES[S.tcMode].toLowerCase()}.`),
-    !sys.balanced ? h('div', { class: 'panel note' }, `${sys.name} is unbalanced and normally skips this step — this drill still trains the conversion for balanced counts.`) : null,
+    head('True Count Drill', 'Estimate decks remaining from the discard tray, rounded to the nearest half deck, then divide the running count by it and round down. Gold lines mark whole decks; faint lines mark half decks.'),
     h('div', { class: 'panel toolbar' },
-      field('Show decks remaining', select([['0', 'No — estimate from tray'], ['1', 'Yes (learning)']], cfg.showDecks ? '1' : '0', (v) => { cfg.showDecks = v === '1'; ctx.save(); render(); })),
-      field('Shoe size', h('span', { class: 'static' }, `${Math.max(2, S.decks)} decks (from Settings)`))),
+      field('Show', select([['tray', 'Discard tray (estimate it)'], ['decks', 'Decks-remaining number']], cfg.display, (v) => { cfg.display = v; ctx.save(); render(); }))),
     area, result, record));
 
   function newProblem() {
-    const decks = Math.max(2, S.decks);
-    const discardedHalves = 1 + randInt(decks * 2 - 2); // 0.5 .. decks-1
-    const remaining = decks - discardedHalves / 2;
+    const halves = 3 + randInt(9); // 1.5 … 5.5 decks remain (75% penetration)
+    const jitter = randInt(15) - 7; // never enough to change the half-deck estimate
+    const remainingCards = halves * 26 + jitter;
     let rc = 0;
-    while (rc === 0) rc = randInt(31) - 15;
-    prob = { decks, remaining, rc, dealt: discardedHalves * 26, t: performance.now() };
+    while (rc === 0) rc = randInt(29) - 14;
+    prob = { rc, remainingCards, est: decksEstimate(remainingCards), t: performance.now() };
     answered = false;
     render();
   }
@@ -37,12 +53,14 @@ export function mount(root, ctx) {
   function render() {
     if (!prob) return;
     const f = numberField('True count');
+    const dealt = RULES.decks * 52 - prob.remainingCards;
     area.replaceChildren(h('div', { class: 'tc-problem' },
-      h('div', { class: 'tc-tray' }, trayEl(prob.dealt, prob.decks, { tall: true }), h('span', { class: 'k' }, `Discards · ${prob.decks}-deck shoe`)),
+      cfg.display === 'tray'
+        ? h('div', { class: 'tc-tray' }, trayEl(dealt, RULES.decks, { tall: true }), h('span', { class: 'k' }, 'Discard tray · 6-deck shoe'))
+        : h('div', { class: 'tc-decks' }, h('div', { class: 'k' }, 'Decks remaining'), h('div', { class: 'big mono' }, String(prob.est))),
       h('div', { class: 'tc-main' },
         h('div', { class: 'k' }, 'Running count'),
         h('div', { class: 'big mono' }, signed(prob.rc)),
-        cfg.showDecks ? h('div', { class: 'muted' }, `${prob.remaining} decks remaining`) : h('div', { class: 'muted' }, 'Decks remaining: estimate from the tray'),
         h('form', {
           class: 'answer-form',
           onsubmit: (e) => {
@@ -57,30 +75,33 @@ export function mount(root, ctx) {
 
   function grade(guess) {
     answered = true;
-    const ans = trueCount(prob.rc, prob.remaining, S.tcMode);
+    const ans = trueCount(prob.rc, prob.est);
     const ok = guess === ans;
     const ms = performance.now() - prob.t;
-    st.attempts++;
-    if (ok) { st.correct++; st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak); } else st.streak = 0;
-    pushHistory(st.history, { t: Date.now(), ok, ms });
+    const err = ok ? null : classifyTC(guess, prob.rc, prob.est);
+    addRun(st, { ok, ms: Math.round(ms), err, rc: prob.rc, decks: prob.est });
     ctx.save();
     const btn = h('button', { class: 'btn primary', onclick: newProblem }, 'Next', h('kbd', {}, 'Enter'));
     result.replaceChildren(
       h('div', { class: `verdict ${ok ? 'good' : 'bad'}` }, ok ? `✓ ${signed(ans)}` : `✗ You said ${signed(guess)} — it's ${signed(ans)}`,
-        h('span', { class: 'muted' }, ` · ${(ms / 1000).toFixed(1)}s`)),
-      h('div', { class: 'muted' }, `${signed(prob.rc)} ÷ ${prob.remaining} decks = ${(prob.rc / prob.remaining).toFixed(2)} → ${signed(ans)} (${S.tcMode})`),
+        h('span', { class: 'muted' }, ` · ${secs(ms)}`)),
+      h('div', { class: 'muted' }, `${prob.remainingCards} cards left ≈ ${prob.est} decks. ${signed(prob.rc)} ÷ ${prob.est} = ${(prob.rc / prob.est).toFixed(2)} → round down → ${signed(ans)}`),
+      err ? h('div', { class: 'warn' }, `Likely mistake: ${TC_ERRORS[err]}`) : null,
       h('div', { class: 'row' }, btn));
     btn.focus();
     renderRecord();
   }
 
   function renderRecord() {
-    const recent = st.history.slice(-20);
-    const avg = recent.length ? recent.reduce((s, r) => s + r.ms, 0) / recent.length / 1000 : 0;
+    const runs = st.runs;
+    const recent = runs.slice(-20);
+    const ok = runs.filter((r) => r.ok).length;
+    let streak = 0;
+    for (let k = runs.length - 1; k >= 0 && runs[k].ok; k--) streak++;
     record.replaceChildren(
-      h('span', {}, `Streak ${st.streak} (best ${st.bestStreak})`),
-      h('span', {}, `Accuracy ${st.attempts ? Math.round((100 * st.correct) / st.attempts) : 0}% (${st.attempts})`),
-      h('span', {}, `Avg time ${avg ? `${avg.toFixed(1)}s` : '—'}`));
+      h('span', {}, `Streak ${streak}`),
+      h('span', {}, `Accuracy ${runs.length ? Math.round((100 * ok) / runs.length) : 0}% (${runs.length})`),
+      h('span', {}, `Avg time (last 20) ${recent.length ? secs(recent.reduce((s, r) => s + r.ms, 0) / recent.length) : '—'}`));
   }
 
   function onKey(e) {

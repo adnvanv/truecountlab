@@ -1,67 +1,127 @@
-// Progress across every mode.
-import { h, head, pct, money } from '../ui.js';
+// Stats per mode: accuracy, speed, error types, progress over time.
+import { h, head, pct, secs, lineChart, dailyAccuracy, money } from '../ui.js';
+import { TC_ERRORS } from './truecount.js';
+import { DEV_ERRORS } from './deviation.js';
+import { heatmapEl } from './basic.js';
+import { ACTIONS, DEVS } from '../strategy.js';
 
-const tile = (title, rows, footer) => h('div', { class: 'tile' },
-  h('h2', {}, title),
-  h('dl', {}, rows.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
-  footer || null);
+const MODES = [
+  { id: 'countdown', label: 'Countdown', link: '#countdown' },
+  { id: 'distraction', label: 'Distraction', link: '#distraction' },
+  { id: 'truecount', label: 'True Count', link: '#truecount' },
+  { id: 'basic', label: 'Basic Strategy', link: '#basic' },
+  { id: 'deviation', label: 'Deviations', link: '#deviation' },
+  { id: 'betting', label: 'Bet Sizing', link: '#betting' },
+  { id: 'table', label: 'Table', link: '#table' },
+];
+
+const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const diffBucket = (d) => (Math.abs(d) === 1 ? 'Off by 1' : Math.abs(d) === 2 ? 'Off by 2' : 'Off by 3 or more');
+
+function errorBars(counts) {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return h('p', { class: 'muted' }, 'No errors recorded.');
+  const max = entries[0][1];
+  return h('div', { class: 'bars' }, entries.map(([k, v]) => h('div', { class: 'bar-row' },
+    h('span', { class: 'bar-label' }, k),
+    h('span', { class: 'bar' }, h('i', { style: `width:${(100 * v) / max}%` })),
+    h('span', { class: 'bar-v' }, v))));
+}
+
+function tally(runs, keyFn) {
+  const out = {};
+  for (const r of runs) if (!r.ok) { const k = keyFn(r); if (k) out[k] = (out[k] || 0) + 1; }
+  return out;
+}
+
+function progress(runs, { speed = true } = {}) {
+  const days = dailyAccuracy(runs);
+  return h('div', { class: 'charts two' },
+    h('div', {}, h('h3', {}, 'Accuracy by day'), lineChart([{ name: 'Accuracy', color: '#6ad99a', points: days.map((d) => ({ x: d.x, y: Math.round(d.acc) })) }], { yFmt: (v) => `${v}%`, yMin: 0, yMax: 100, height: 140 })),
+    speed ? h('div', {}, h('h3', {}, 'Average time by day'), lineChart([{ name: 'Time', color: '#e3bc5f', points: days.filter((d) => d.ms).map((d) => ({ x: d.x, y: d.ms / 1000 })) }], { yFmt: (v) => `${v}s`, height: 140 })) : null);
+}
+
+function detail(id, s, G) {
+  const st = s[id];
+  const runs = st.runs || [];
+  const ok = runs.filter((r) => r.ok);
+  const last50 = runs.slice(-50);
+  const numbers = (pairs) => h('div', { class: 'kpis' }, pairs.map(([k, v]) => h('div', { class: 'kpi' }, h('div', { class: 'v' }, v), h('div', { class: 'k' }, k))));
+  const base = [
+    ['Attempts', runs.length],
+    ['Accuracy', pct(ok.length, runs.length)],
+    ['Last 50', pct(last50.filter((r) => r.ok).length, last50.length)],
+    ['Avg time', runs.length ? secs(avg(runs.map((r) => r.ms))) : '—'],
+  ];
+
+  if (id === 'countdown' || id === 'distraction') {
+    const best = ok.length ? Math.min(...ok.map((r) => r.ms)) : null;
+    const extra = [['Best correct', best ? secs(best) : '—'], ['Under 30s & correct', runs.filter((r) => r.goal).length]];
+    if (id === 'distraction') {
+      const n = runs.reduce((a, r) => a + (r.popups || 0), 0);
+      extra.push(['Pop-ups answered', pct(runs.reduce((a, r) => a + (r.popupsOk || 0), 0), n)]);
+    }
+    return [numbers([...base, ...extra]), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => diffBucket(r.diff))), progress(runs)];
+  }
+  if (id === 'truecount') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => TC_ERRORS[r.err] || 'Other')), progress(runs)];
+  if (id === 'basic') {
+    return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => `Should ${ACTIONS[r.want]?.toLowerCase()}, chose ${ACTIONS[r.chose]?.toLowerCase()}`)),
+      progress(runs), h('h3', {}, 'Mistake heatmap'), heatmapEl(st.cells)];
+  }
+  if (id === 'deviation') {
+    const byDev = Object.fromEntries(DEVS.map((d) => [d.id, d.name]));
+    return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => DEV_ERRORS[r.err])),
+      h('h3', {}, 'Misses by deviation'), errorBars(tally(runs, (r) => byDev[r.dev])), progress(runs)];
+  }
+  if (id === 'betting') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => (r.err === 'under' ? 'Underbet' : 'Overbet'))), progress(runs)];
+
+  // table
+  const T = st;
+  const sims = G.sessions.filter((x) => x.kind === 'sim').sort((a, b) => a.t - b.t);
+  return [
+    numbers([
+      ['Hands', T.hands], ['Decisions', pct(T.correct, T.decisions)], ['Deviations', pct(T.devsCorrect, T.devs)],
+      ['Count checks', pct(T.checksCorrect, T.checks)], ['Bets on ramp', pct(T.betsCorrect, T.bets)], ['Count reveals', T.peeks],
+    ]),
+    h('h3', {}, 'Most-missed hands'),
+    errorBars(Object.fromEntries(Object.entries(T.misses).sort((a, b) => b[1] - a[1]).slice(0, 10))),
+    h('div', { class: 'charts two' },
+      h('div', {}, h('h3', {}, 'Accuracy by session'), lineChart([
+        { name: 'Play', color: '#6ad99a', points: sims.filter((x) => x.decisionAcc != null).map((x) => ({ x: x.end, y: x.decisionAcc })) },
+        { name: 'Count checks', color: '#84c8ff', points: sims.filter((x) => x.countAcc != null).map((x) => ({ x: x.end, y: x.countAcc })) },
+        { name: 'Bets', color: '#e3bc5f', points: sims.filter((x) => x.betAcc != null).map((x) => ({ x: x.end, y: x.betAcc })) },
+      ], { yFmt: (v) => `${v}%`, yMin: 0, yMax: 100, height: 140 })),
+      h('div', {}, h('h3', {}, 'Session results'), lineChart([{ name: 'Net', color: '#e3bc5f', points: sims.map((x) => ({ x: x.end, y: x.cashOut - x.buyIn })) }], { yFmt: (v) => money(v), zero: true, height: 140 }))),
+  ];
+}
 
 export function mount(root, ctx) {
+  let current = 'countdown';
   const draw = () => {
     const s = ctx.stats;
-    const t = s.table;
-    const misses = {};
-    for (const src of [t.misses, s.strategy.misses]) for (const [k, v] of Object.entries(src)) misses[k] = (misses[k] || 0) + v;
-    const weak = Object.entries(misses).sort((a, b) => b[1] - a[1]).slice(0, 12);
-    const deckAvg = (() => {
-      const ok = s.deck.history.filter((r) => r.ok).slice(-5);
-      return ok.length ? `${(ok.reduce((a, r) => a + r.ms, 0) / ok.length / 1000).toFixed(1)}s` : '—';
-    })();
-    const speedTop = s.speed.history.filter((r) => r.ok).reduce((m, r) => (m == null || r.ms < m.ms ? r : m), null);
-
+    const overview = MODES.map((m) => {
+      if (m.id === 'table') {
+        const T = s.table;
+        return h('button', { class: `tile mini${current === m.id ? ' on' : ''}`, onclick: () => { current = m.id; draw(); } },
+          h('div', { class: 'k' }, m.label), h('div', { class: 'v' }, pct(T.correct, T.decisions)), h('div', { class: 'muted' }, `${T.hands} hands`));
+      }
+      const runs = s[m.id].runs;
+      return h('button', { class: `tile mini${current === m.id ? ' on' : ''}`, onclick: () => { current = m.id; draw(); } },
+        h('div', { class: 'k' }, m.label),
+        h('div', { class: 'v' }, pct(runs.filter((r) => r.ok).length, runs.length)),
+        h('div', { class: 'muted' }, runs.length ? `${runs.length} · avg ${secs(avg(runs.map((r) => r.ms)))}` : 'not started'));
+    });
+    const mode = MODES.find((m) => m.id === current);
     root.replaceChildren(h('section', { class: 'view' },
-      head('Stats', 'Saved on your Optiplex, so progress follows you between devices.'),
-      h('div', { class: 'tiles' },
-        tile('Table', [
-          ['Hands played', t.hands],
-          ['Decisions correct', `${pct(t.correct, t.decisions)} (${t.correct}/${t.decisions})`],
-          ['Index plays correct', `${pct(t.devsCorrect, t.devs)} (${t.devsCorrect}/${t.devs})`],
-          ['Count checks', `${pct(t.checksCorrect, t.checks)} (${t.checksCorrect}/${t.checks})`],
-          ['Bets on the ramp', `${pct(t.betsCorrect, t.bets)}`],
-          ['Count peeks', t.peeks],
-          ['Net result', money(t.net)],
-          ['Bankroll', t.bankroll == null ? '—' : money(t.bankroll)],
-        ]),
-        tile('Speed Count', [
-          ['Runs', s.speed.attempts],
-          ['Accuracy', pct(s.speed.correct, s.speed.attempts)],
-          ['Fastest correct', speedTop ? `${speedTop.ms} ms/flash · ${speedTop.n} cards` : '—'],
-        ]),
-        tile('Deck Countdown', [
-          ['Runs', s.deck.attempts],
-          ['Accuracy', pct(s.deck.correct, s.deck.attempts)],
-          ['Best time', s.deck.best ? `${(s.deck.best / 1000).toFixed(1)}s` : '—'],
-          ['Avg (last 5 correct)', deckAvg],
-        ]),
-        tile('True Count', [
-          ['Attempts', s.truecount.attempts],
-          ['Accuracy', pct(s.truecount.correct, s.truecount.attempts)],
-          ['Best streak', s.truecount.bestStreak],
-        ]),
-        tile('Strategy Drill', [
-          ['Attempts', s.strategy.attempts],
-          ['Accuracy', pct(s.strategy.correct, s.strategy.attempts)],
-          ['Best streak', s.strategy.bestStreak],
-        ]),
-        h('div', { class: 'tile' },
-          h('h2', {}, 'Weak spots'),
-          weak.length
-            ? h('ol', { class: 'weak' }, weak.map(([k, v]) => h('li', {}, h('span', {}, k), h('span', { class: 'muted' }, `${v} miss${v === 1 ? '' : 'es'}`))))
-            : h('p', { class: 'muted' }, 'No misses recorded yet.'))),
+      head('Stats', 'Pick a mode for its accuracy, speed, error types, and progress over time.'),
+      h('div', { class: 'overview' }, overview),
+      h('div', { class: 'chart-block' },
+        h('div', { class: 'row spread' }, h('h2', {}, mode.label), h('a', { href: mode.link, class: 'btn sm' }, 'Practice →')),
+        detail(current, s, ctx.state)),
       h('div', { class: 'row' }, h('button', {
         class: 'btn danger',
         onclick: () => {
-          if (!confirm('Reset all stats and the table bankroll? Settings are kept.')) return;
+          if (!confirm('Reset all drill and table stats? Sessions and bankroll are kept.')) return;
           ctx.resetStats();
           draw();
         },

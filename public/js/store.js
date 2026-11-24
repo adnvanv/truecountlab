@@ -1,36 +1,32 @@
-// Settings + stats, saved to localStorage and synced to the server (api/state).
-const KEY = 'bjtrainer.v1';
+// Settings, stats, bankroll and sessions. Saved to localStorage and synced to
+// the Optiplex (api/state) so phone and PC share progress.
+import { RULES } from './cards.js';
+
+const KEY = 'bjtrainer.v2';
+const RUN_CAP = 600;
 
 export const DEFAULT_SETTINGS = {
-  system: 'hilo',
-  tcMode: 'floor',
-  deviations: true,
-  decks: 6,
-  penetration: 75,
-  h17: false,
-  das: true,
-  surrender: true,
   others: 2,
   dealSpeed: 380,
   countCheck: 'random',
   showCount: false,
-  betHints: true,
-  bankroll: 1000,
-  unit: 10,
-  spread: 8,
-  speed: { cards: 20, group: 1, ms: 900 },
-  deckDrill: { burn: true, group: 1, auto: false, ms: 500 },
-  tcDrill: { showDecks: false },
-  stratDrill: { devs: true, auto: true },
+  countdown: { auto: true, ms: 500, burn: false },
+  distraction: { auto: true, ms: 600, burn: false, audio: true, voice: true, popups: true, chatter: true, volume: 0.5 },
+  tcDrill: { display: 'tray' },
+  betDrill: { display: 'tc' },
+  basic: { focus: false, auto: true },
+  deviation: { auto: true },
 };
 
 export function freshStats() {
   return {
-    table: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, net: 0, bankroll: null, lastBet: null, misses: {} },
-    speed: { attempts: 0, correct: 0, history: [] },
-    deck: { attempts: 0, correct: 0, best: null, history: [] },
-    truecount: { attempts: 0, correct: 0, streak: 0, bestStreak: 0, history: [] },
-    strategy: { attempts: 0, correct: 0, streak: 0, bestStreak: 0, misses: {} },
+    countdown: { runs: [] },
+    distraction: { runs: [] },
+    truecount: { runs: [] },
+    basic: { runs: [], cells: {} },
+    deviation: { runs: [] },
+    betting: { runs: [] },
+    table: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
   };
 }
 
@@ -38,7 +34,7 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 function merge(base, over) {
   if (!isObj(over)) return base;
   for (const [k, v] of Object.entries(over)) {
-    if (isObj(base[k]) && isObj(v) && k !== 'misses') merge(base[k], v);
+    if (isObj(base[k]) && isObj(v) && k !== 'misses' && k !== 'cells') merge(base[k], v);
     else base[k] = v;
   }
   return base;
@@ -49,14 +45,17 @@ function normalize(raw) {
     savedAt: raw?.savedAt || 0,
     settings: merge(structuredClone(DEFAULT_SETTINGS), raw?.settings),
     stats: merge(freshStats(), raw?.stats),
+    bankroll: typeof raw?.bankroll === 'number' ? raw.bankroll : RULES.bankroll,
+    session: raw?.session || null,
+    sessions: Array.isArray(raw?.sessions) ? raw.sessions : [],
   };
 }
 
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
 }
-function writeLocal(state) {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* storage unavailable */ }
+function writeLocal(s) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage unavailable */ }
 }
 
 let state;
@@ -69,9 +68,8 @@ export async function init() {
   try {
     const r = await fetch('api/state', { cache: 'no-store' });
     if (r.ok) { remote = await r.json(); serverOK = true; }
-  } catch { /* offline or opened from file */ }
-  const raw = (remote?.savedAt || 0) > (local?.savedAt || 0) ? remote : local;
-  state = normalize(raw);
+  } catch { /* offline */ }
+  state = normalize((remote?.savedAt || 0) > (local?.savedAt || 0) ? remote : local);
   addEventListener('pagehide', flush);
   return state;
 }
@@ -88,17 +86,11 @@ export function save() {
   clearTimeout(timer);
   timer = setTimeout(push, 800);
 }
+function flush() { if (timer) { clearTimeout(timer); push(); } }
 
-function flush() {
-  if (timer) { clearTimeout(timer); push(); }
-}
+export function resetStats() { state.stats = freshStats(); save(); }
 
-export function resetStats() {
-  state.stats = freshStats();
-  save();
-}
-
-export function pushHistory(arr, item, cap = 200) {
-  arr.push(item);
-  if (arr.length > cap) arr.splice(0, arr.length - cap);
+export function addRun(bucket, run) {
+  bucket.runs.push({ t: Date.now(), ...run });
+  if (bucket.runs.length > RUN_CAP) bucket.runs.splice(0, bucket.runs.length - RUN_CAP);
 }
