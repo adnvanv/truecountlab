@@ -223,7 +223,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
     const ok = guess === expected;
     const goalMet = ok && elapsed < GOAL_MS;
     addRun(st, {
-      ms: Math.round(elapsed), ok, goal: goalMet, diff: guess - expected, auto: cfg.auto, speed: cfg.auto ? cfg.ms : null, burn: !!burned,
+      ms: Math.round(elapsed), ok, goal: goalMet, exp: expected, diff: guess - expected, auto: cfg.auto, speed: cfg.auto ? cfg.ms : null, burn: !!burned,
       ...(distraction ? { popups: popStats.shown, popupsOk: popStats.ok } : {}),
     });
     ctx.save();

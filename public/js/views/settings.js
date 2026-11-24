@@ -13,6 +13,7 @@ export function mount(root, ctx) {
         field('Other players', select([0, 1, 2, 3, 4, 5].map((v) => [v, String(v)]), S.others, (v) => set('others', Number(v))), 'They play basic strategy, so there are more cards to count.'),
         field('Deal speed', select([150, 250, 380, 500, 700, 1000].map((v) => [v, `${v} ms per card`]), S.dealSpeed, (v) => set('dealSpeed', Number(v)))),
         field('Count checks', select([['random', 'Random (~30% of hands)'], ['every', 'Every hand'], ['shoe', 'End of each shoe'], ['off', 'Off']], S.countCheck, (v) => set('countCheck', v))),
+        field('Late surrender', select([['0', 'Off (default)'], ['1', 'On — count-based surrender']], S.surrender ? '1' : '0', (v) => set('surrender', v === '1')), 'Adds the Surrender button at the table and four surrender deviations: 15v10 at 0+, 14v10 at +3+, 15v9 at +2+, 15vA at +1+.'),
         field('Count display', select([['0', 'Hidden (reveal with C)'], ['1', 'Visible']], S.showCount ? '1' : '0', (v) => set('showCount', v === '1')))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Data'),

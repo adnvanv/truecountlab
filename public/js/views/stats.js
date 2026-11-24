@@ -13,6 +13,7 @@ const MODES = [
   { id: 'deviation', label: 'Deviations', link: '#deviation' },
   { id: 'betting', label: 'Bet Sizing', link: '#betting' },
   { id: 'table', label: 'Table', link: '#table' },
+  { id: 'training', label: 'Training', link: '#training' },
 ];
 
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -70,13 +71,24 @@ function detail(id, s, G) {
   }
   if (id === 'deviation') {
     const byDev = Object.fromEntries(DEVS.map((d) => [d.id, d.name]));
-    return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => DEV_ERRORS[r.err])),
+    const picks = { basic: 'Basic strategy', deviation: 'The deviation', wrong: 'A wrong play' };
+    const pickCounts = {};
+    for (const r of runs) if (r.picked) pickCounts[picks[r.picked]] = (pickCounts[picks[r.picked]] || 0) + 1;
+    return [numbers(base), h('h3', {}, 'What you picked'), h('div', { class: 'muted' }, Object.entries(pickCounts).map(([k, v]) => `${k}: ${v}`).join(' · ') || '—'),
+      h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => DEV_ERRORS[r.err])),
       h('h3', {}, 'Misses by deviation'), errorBars(tally(runs, (r) => byDev[r.dev])), progress(runs)];
   }
   if (id === 'betting') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => (r.err === 'under' ? 'Underbet' : 'Overbet'))), progress(runs)];
 
-  // table
+  // table / training
   const T = st;
+  if (id === 'training') {
+    return [numbers([
+      ['Hands', T.hands], ['Decisions', pct(T.correct, T.decisions)], ['Deviations', pct(T.devsCorrect, T.devs)],
+      ['Count checks', pct(T.checksCorrect, T.checks)], ['Bets on ramp', pct(T.betsCorrect, T.bets)],
+    ]), h('h3', {}, 'Most-missed hands'), errorBars(Object.fromEntries(Object.entries(T.misses).sort((a, b) => b[1] - a[1]).slice(0, 10))),
+    h('p', { class: 'muted' }, 'Training-table play is kept separate from the real table and doesn’t count toward the ready-to-play checklist.')];
+  }
   const sims = G.sessions.filter((x) => x.kind === 'sim').sort((a, b) => a.t - b.t);
   return [
     numbers([
@@ -100,8 +112,8 @@ export function mount(root, ctx) {
   const draw = () => {
     const s = ctx.stats;
     const overview = MODES.map((m) => {
-      if (m.id === 'table') {
-        const T = s.table;
+      if (m.id === 'table' || m.id === 'training') {
+        const T = s[m.id];
         return h('button', { class: `tile mini${current === m.id ? ' on' : ''}`, onclick: () => { current = m.id; draw(); } },
           h('div', { class: 'k' }, m.label), h('div', { class: 'v' }, pct(T.correct, T.decisions)), h('div', { class: 'muted' }, `${T.hands} hands`));
       }

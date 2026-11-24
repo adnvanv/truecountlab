@@ -434,3 +434,67 @@ input.num.text { min-width: 0; }
   .dealer-zone { margin-bottom: 0.6rem; }
   .feedback { min-height: 0; margin: 0.6rem 0; }
 }
+
+/* ==== v3 additions ===================================================== */
+/* home: ready-to-play */
+.ready-card { border-radius: 18px; padding: 1.2rem; margin-bottom: 1rem; border: 1px solid var(--line); background: var(--panel); }
+.ready-card.unlocked { border-color: var(--good); background: linear-gradient(135deg, rgba(106,217,154,.16), var(--panel)); }
+.ready-head { display: flex; gap: 1rem; align-items: center; margin-bottom: 0.8rem; }
+.ready-head .sub { margin: 0; color: var(--muted); }
+.ready-icon { width: 54px; height: 54px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 1.6rem; background: rgba(0,0,0,.3); border: 1px solid var(--line); }
+.unlocked .ready-icon { background: var(--good); color: #062014; font-weight: 800; }
+.gates { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.gates li { display: grid; grid-template-columns: 30px 1fr auto; gap: 0.8rem; align-items: center; background: rgba(0,0,0,.18); border-radius: 12px; padding: 0.7rem 0.8rem; }
+.gate-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 800; }
+.gates li.met .gate-check { background: var(--good); border-color: var(--good); color: #062014; }
+.gate-label { font-weight: 600; }
+.gate-bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,.08); margin: 0.35rem 0 0.2rem; overflow: hidden; }
+.gate-bar i { display: block; height: 100%; background: var(--gold); border-radius: 4px; }
+.gates li.met .gate-bar i { background: var(--good); }
+.gate-detail { font-size: 0.85rem; }
+.home-meta { font-size: 0.85rem; margin: 0 0 0.8rem; }
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; }
+.mode-card { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.7rem; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 0.85rem; }
+.mode-card:hover { border-color: var(--gold); }
+.mode-num { grid-row: span 2; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(227,188,95,.15); color: var(--gold); font-weight: 700; }
+.mode-name { font-weight: 600; }
+.mode-desc { font-size: 0.82rem; }
+
+/* training table + cheat */
+.training-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap; font-size: 0.85rem; margin-bottom: 0.6rem; }
+.cheat-btn.on { background: #ff5fa2; color: #22000f; border-color: transparent; }
+.cheat-panel.on { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.8rem; padding: 0.7rem; border-radius: 14px; border: 1px dashed #ff5fa2; background: rgba(255, 95, 162, 0.08); }
+.cheat-item { display: flex; flex-direction: column; }
+.cheat-item.wide { grid-column: 1 / -1; }
+.cheat-item .v { font-weight: 700; }
+.cheat-item.wide .v { color: #ffb3d4; font-size: 1.05rem; }
+.btn.hint { box-shadow: 0 0 0 3px #ff5fa2, 0 0 18px rgba(255,95,162,.55); border-color: #ff5fa2 !important; }
+.actions.five .btn.act { min-width: 100px; }
+
+/* deviation trainer */
+.tc-pill.big-pill { font-size: 1.15rem; padding: 0.3rem 1rem; }
+.picked { margin: 0.2rem 0 0.4rem; }
+.pill { display: inline-block; border-radius: 999px; padding: 0.1rem 0.6rem; font-weight: 700; font-size: 0.85rem; }
+.pill.basic { background: rgba(90,169,230,.2); color: var(--a-H); }
+.pill.deviation { background: rgba(227,188,95,.2); color: var(--gold); }
+.pill.wrong { background: rgba(255,130,119,.2); color: var(--bad); }
+tr.group-row td { color: var(--gold); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 0.8rem; }
+tr.weak-row td:first-child { color: var(--bad); font-weight: 600; }
+tr.dim td { opacity: 0.45; }
+
+/* calculator */
+.kpis.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.kpi.big { padding: 0.9rem 1rem; }
+.kpi.big .v { font-size: 1.9rem; }
+.kpi.big .muted { font-size: 0.82rem; margin-top: 0.2rem; }
+.kpi.good .v { color: var(--good); }
+.kpi.bad .v { color: var(--bad); }
+.kpi.warn .v { color: var(--warn); }
+.calc-extra { margin: 0.4rem 0 1rem; }
+
+@media (max-width: 640px) {
+  .gates li { grid-template-columns: 26px 1fr; }
+  .gates li .btn { grid-column: 2; justify-self: start; }
+  .actions.five { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .actions.five .btn.act { min-width: 0; }
+}

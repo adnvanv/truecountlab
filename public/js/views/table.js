@@ -6,11 +6,15 @@ import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handL
 const ABORT = Symbol('abort');
 const MIN = RULES.minBet;
 
-export function mount(root, ctx) {
+export function mount(root, ctx, { training = false } = {}) {
   const S = ctx.settings;
-  const T = ctx.stats.table;
+  const T = training ? ctx.stats.training : ctx.stats.table;
   const G = ctx.state; // bankroll, session, sessions
+  const cheatCfg = S.training;
   let alive = true;
+  // Training mode plays with practice chips: no buy-in, no stop-loss, nothing logged.
+  const PRACTICE = 5000;
+  const practice = { stack: PRACTICE, buyIn: PRACTICE, hands: 0, peeks: 0 };
 
   const shoe = new Shoe();
   let rc = 0;
@@ -32,13 +36,19 @@ export function mount(root, ctx) {
   const seatsZone = h('div', { class: 'zone seats' });
   const fb = h('div', { class: 'feedback', 'aria-live': 'polite' });
   const controls = h('div', { class: 'controls' });
-  root.append(h('section', { class: 'view table-view' },
-    h('div', { class: 'rules-line muted' }, RULES.text),
-    hud, h('div', { class: 'felt' }, dealerZone, seatsZone), fb, controls));
+  const cheatPanel = h('div', { class: 'cheat-panel', 'aria-live': 'polite' });
+  const rulesText = S.surrender ? RULES.text.replace('no surrender', 'late surrender (count-based)') : RULES.text;
+  root.append(h('section', { class: `view table-view${training ? ' training' : ''}` },
+    training
+      ? h('div', { class: 'training-bar' },
+        h('div', {}, h('strong', {}, 'Training table'), h('span', { class: 'muted' }, ' · practice chips, nothing logged · '), rulesText),
+        h('button', { class: `btn sm cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat }, cheatCfg.cheat ? 'Cheat: ON' : 'Cheat: OFF', h('kbd', {}, 'X')))
+      : h('div', { class: 'rules-line muted' }, rulesText),
+    hud, training ? cheatPanel : null, h('div', { class: 'felt' }, dealerZone, seatsZone), fb, controls));
 
   // ---- helpers -----------------------------------------------------------
-  const sess = () => G.session;
-  const stack = () => G.session?.stack ?? 0;
+  const sess = () => (training ? practice : G.session);
+  const stack = () => sess()?.stack ?? 0;
   const tc = () => tcFromCards(rc, shoe.remaining);
   const takeAnim = (c) => { if (c.anim) { c.anim = false; return true; } return false; };
 
@@ -88,9 +98,47 @@ export function mount(root, ctx) {
     return {
       canDouble: two && stack() >= hd.bet,
       canSplit: two && rankKey(hd.cards[0].rank) === rankKey(hd.cards[1].rank) && hands.length < 4 && stack() >= hd.bet && !hd.splitAces,
+      canSurrender: S.surrender && two && hands.length === 1 && !hd.fromSplit,
     };
   }
-  const allowed = (a, o) => a === 'H' || a === 'S' || (a === 'D' && o.canDouble) || (a === 'P' && o.canSplit);
+  const allowed = (a, o) => a === 'H' || a === 'S' || (a === 'D' && o.canDouble) || (a === 'P' && o.canSplit) || (a === 'R' && o.canSurrender);
+  const ACTS = ['H', 'S', 'D', 'P'].concat(S.surrender ? ['R'] : []);
+
+  // What the cheat panel recommends right now.
+  function cheatAdvice() {
+    const t = tc();
+    if (phase === 'insurance') return { key: insuranceCorrect(t) ? 'Y' : 'N', text: `${insuranceCorrect(t) ? 'Take' : 'Decline'} insurance (take at TC ≥ +3; TC is ${signed(t)})` };
+    if (phase === 'play' && hands[active] && dealer.length) {
+      const hd = hands[active];
+      const r = correctAction(hd.cards, upValue(dealer[0]), optsFor(hd), t);
+      return { key: r.action, text: `${ACTIONS[r.action]} — ${r.dev ? r.note : `basic strategy for ${handLabel(hd.cards)} vs ${upLabel(upValue(dealer[0]))}`}` };
+    }
+    if (phase === 'bet') return { key: null, text: `Bet ${money(betFor(t))} (TC ${signed(t)})` };
+    return { key: null, text: 'Watch the cards…' };
+  }
+
+  function renderCheat() {
+    if (!training) return;
+    if (!cheatCfg.cheat) { cheatPanel.replaceChildren(); cheatPanel.classList.remove('on'); return; }
+    cheatPanel.classList.add('on');
+    const est = decksEstimate(shoe.remaining);
+    const adv = cheatAdvice();
+    const item = (k, v) => h('div', { class: 'cheat-item' }, h('span', { class: 'k' }, k), h('span', { class: 'v mono' }, v));
+    cheatPanel.replaceChildren(
+      item('Running count', signed(rc)),
+      item('Decks left', `${(shoe.remaining / 52).toFixed(2)} → ${est}`),
+      item('True count', `${signed(rc)} ÷ ${est} → ${signed(tc())}`),
+      item('Bet', money(betFor(tc()))),
+      h('div', { class: 'cheat-item wide' }, h('span', { class: 'k' }, 'Correct play'), h('span', { class: 'v' }, adv.text)));
+  }
+
+  function toggleCheat() {
+    cheatCfg.cheat = !cheatCfg.cheat;
+    ctx.save();
+    const b = root.querySelector('.cheat-btn');
+    if (b) { b.classList.toggle('on', cheatCfg.cheat); b.firstChild.textContent = cheatCfg.cheat ? 'Cheat: ON' : 'Cheat: OFF'; }
+    render();
+  }
 
   function totalText(cards) {
     const vis = cards.filter((c) => !c.down);
@@ -109,9 +157,10 @@ export function mount(root, ctx) {
     hud.replaceChildren(
       h('div', { class: 'hud-tray' }, trayEl(shoe.dealt, RULES.decks), h('span', { class: 'k' }, 'Discards')),
       h('div', { class: 'hud-info' },
-        stat('Session stack', s ? `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})` : '—'),
-        stat('Bankroll', money(G.bankroll + stack())),
-        stat('Hands this session', s ? String(s.hands || 0) : '—'),
+        training ? stat('Practice chips', `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})`)
+          : stat('Session stack', s ? `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})` : '—'),
+        training ? stat('Decisions', `${pct(T.correct, T.decisions)} of ${T.decisions}`) : stat('Bankroll', money(G.bankroll + stack())),
+        stat(training ? 'Hands' : 'Hands this session', s ? String(s.hands || 0) : '—'),
         h('div', { class: `stat count${reveal ? ' on' : ''}` },
           h('span', { class: 'k' }, 'Count'),
           h('div', { class: 'count-row' },
@@ -161,28 +210,32 @@ export function mount(root, ctx) {
             h('button', { class: 'btn round', onclick: () => { setBet(bet + MIN); render(); }, 'aria-label': 'Raise bet' }, '+')),
           h('button', { class: 'btn primary deal', onclick: () => run(deal), disabled: bet > stack() }, 'Deal', h('kbd', {}, 'Space'))),
         h('div', { class: 'bet-sub' },
-          h('button', { class: 'btn sm', onclick: () => endSession('Cashed out') }, `Cash out ${money(stack())}`),
+          training
+            ? h('button', { class: 'btn sm', onclick: () => { practice.stack = PRACTICE; practice.buyIn = PRACTICE; render(); } }, 'Reset chips')
+            : h('button', { class: 'btn sm', onclick: () => endSession('Cashed out') }, `Cash out ${money(stack())}`),
           h('button', { class: 'link', onclick: newShoe }, 'Shuffle new shoe'),
           h('span', { class: 'muted hide-sm' }, '1/2/3 or ↑/↓ set the bet')));
       return;
     }
+    const hint = training && cheatCfg.cheat ? cheatAdvice().key : null;
     if (phase === 'insurance') {
       controls.replaceChildren(h('div', { class: 'ins-row' },
         h('span', {}, 'Dealer shows an Ace. Insurance?'),
-        h('button', { class: 'btn', onclick: () => pendingInsurance?.(true) }, 'Yes', h('kbd', {}, 'Y')),
-        h('button', { class: 'btn', onclick: () => pendingInsurance?.(false) }, 'No', h('kbd', {}, 'N'))));
+        h('button', { class: `btn${hint === 'Y' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(true) }, 'Yes', h('kbd', {}, 'Y')),
+        h('button', { class: `btn${hint === 'N' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(false) }, 'No', h('kbd', {}, 'N'))));
       return;
     }
     const hd = hands[active];
     const o = phase === 'play' && hd ? optsFor(hd) : null;
-    controls.replaceChildren(h('div', { class: 'actions four' }, ['H', 'S', 'D', 'P'].map((a) => h('button', {
-      class: `btn act act-${a}`, disabled: !o || busy || !allowed(a, o), onclick: () => run(() => act(a)),
+    controls.replaceChildren(h('div', { class: `actions ${ACTS.length > 4 ? 'five' : 'four'}` }, ACTS.map((a) => h('button', {
+      class: `btn act act-${a}${o && !busy && hint === a ? ' hint' : ''}`, disabled: !o || busy || !allowed(a, o), onclick: () => run(() => act(a)),
     }, h('span', {}, ACTIONS[a]), h('kbd', {}, a)))));
   }
 
   function render() {
     if (!alive) return;
     renderHud();
+    renderCheat();
     renderTable();
     renderControls();
   }
@@ -325,6 +378,9 @@ export function mount(root, ctx) {
       if (handTotal(hd.cards).total >= 21) hd.done = true;
     } else if (a === 'S') {
       hd.done = true;
+    } else if (a === 'R') {
+      hd.surrendered = true;
+      hd.done = true;
     } else if (a === 'D') {
       sess().stack -= hd.bet;
       hd.bet *= 2;
@@ -357,7 +413,7 @@ export function mount(root, ctx) {
     revealHole();
     await step();
     const natural = hands.length === 1 && isBlackjack(hands[0].cards);
-    const live = (!natural && hands.some((x) => handTotal(x.cards).total <= 21))
+    const live = (!natural && hands.some((x) => !x.surrendered && handTotal(x.cards).total <= 21))
       || others.some((o) => handTotal(o.cards).total <= 21 && !isBlackjack(o.cards));
     if (!live) return;
     while (handTotal(dealer).total < 17) { dealer.push(draw()); await step(); } // stands on all 17s
@@ -374,7 +430,8 @@ export function mount(root, ctx) {
       const p = handTotal(x.cards).total;
       const natural = hands.length === 1 && isBlackjack(x.cards);
       let r;
-      if (p > 21) r = ['Bust', 0, 'lose'];
+      if (x.surrendered) r = ['Surrendered', x.bet / 2, 'push'];
+      else if (p > 21) r = ['Bust', 0, 'lose'];
       else if (dBJ) r = natural ? ['Push', x.bet, 'push'] : ['Lose', 0, 'lose'];
       else if (natural) r = ['Blackjack!', x.bet * 2.5, 'win'];
       else if (d.total > 21 || p > d.total) r = ['Win', x.bet * 2, 'win'];
@@ -403,7 +460,13 @@ export function mount(root, ctx) {
       note('Cut card reached (75%) — fresh shoe, count back to 0.', 'info');
     }
     phase = 'bet';
-    if (stack() < MIN) {
+    if (training && stack() < MIN) {
+      practice.stack += PRACTICE;
+      practice.buyIn += PRACTICE;
+      note(`Practice chips topped up by ${money(PRACTICE)}.`, 'info');
+      setBet(bet);
+      render();
+    } else if (stack() < MIN) {
       endSession('Stop-loss hit');
     } else {
       setBet(bet);
@@ -494,6 +557,7 @@ export function mount(root, ctx) {
     if (typingInField(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (k === 'c' && phase !== 'check') { toggleReveal(); return; }
+    if (k === 'x' && training) { toggleCheat(); return; }
     if (phase === 'bet' && !sess()) {
       if (k === 'enter' || k === ' ') { e.preventDefault(); startSession(); }
     } else if (phase === 'bet') {
@@ -503,13 +567,14 @@ export function mount(root, ctx) {
       else if (['1', '2', '3'].includes(k)) { setBet(BETS[Number(k) - 1]); render(); }
     } else if (phase === 'insurance' && (k === 'y' || k === 'n')) {
       pendingInsurance?.(k === 'y');
-    } else if (phase === 'play' && k.length === 1 && 'hsdp'.includes(k)) {
+    } else if (phase === 'play' && k.length === 1 && 'hsdpr'.includes(k)) {
       run(() => act(k.toUpperCase()));
     }
   }
   addEventListener('keydown', onKey);
 
-  if (sess()) note(`Session in progress: ${money(stack())} stack. New shoe — count starts at 0.`, 'info');
+  if (training) note(`Training table: ${money(PRACTICE)} in practice chips. Press X to toggle the cheat panel (count, true count, bet and the correct play).`, 'info');
+  else if (sess()) note(`Session in progress: ${money(stack())} stack. New shoe — count starts at 0.`, 'info');
   setBet(MIN);
   render();
 

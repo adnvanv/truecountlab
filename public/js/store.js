@@ -10,12 +10,15 @@ export const DEFAULT_SETTINGS = {
   dealSpeed: 380,
   countCheck: 'random',
   showCount: false,
+  surrender: false,
   countdown: { auto: true, ms: 500, burn: false },
   distraction: { auto: true, ms: 600, burn: false, audio: true, voice: true, popups: true, chatter: true, volume: 0.5 },
   tcDrill: { display: 'tray' },
   betDrill: { display: 'tc' },
   basic: { focus: false, auto: true },
-  deviation: { auto: true },
+  deviation: { auto: true, mode: 'mixed', focus: true },
+  training: { cheat: true },
+  calc: { bankroll: 3000, unit: 25, spread: 3, hands: 80 },
 };
 
 export function freshStats() {
@@ -26,6 +29,7 @@ export function freshStats() {
     basic: { runs: [], cells: {} },
     deviation: { runs: [] },
     betting: { runs: [] },
+    training: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
     table: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
   };
 }

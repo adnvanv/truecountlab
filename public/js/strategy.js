@@ -2,7 +2,7 @@
 // deviations this trainer drills.
 import { rankKey, bjValue } from './cards.js';
 
-export const ACTIONS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', Y: 'Take insurance', N: 'Decline insurance' };
+export const ACTIONS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender', Y: 'Take insurance', N: 'Decline insurance' };
 export const UPCARDS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 export const upLabel = (v) => (v === 11 ? 'A' : String(v));
 const signed = (n) => (n > 0 ? `+${n}` : String(n));
@@ -100,31 +100,62 @@ export function basicStrategy(cards, up, o) {
   return { action: resolve(code, o), code, kind: 'hard', total, soft };
 }
 
-// The eight count deviations. Make the `at` play when TC >= index.
+// Count deviations. Make the `at` play when TC >= tc (the index); otherwise `below`.
+// group: core (original 8) · low (low-count hits) · extra · surrender (only with the toggle on).
+export const DEV_GROUPS = { core: 'Core', low: 'Low-count hits', extra: 'Extra doubles/stands', surrender: 'Surrender' };
 export const DEVS = [
-  { id: 'ins', name: 'Insurance', tc: 3, at: 'Y', below: 'N', up: 11 },
-  { id: '16v10', name: '16 vs 10', total: 16, up: 10, tc: 0, at: 'S', below: 'H' },
-  { id: '15v10', name: '15 vs 10', total: 15, up: 10, tc: 4, at: 'S', below: 'H' },
-  { id: '12v3', name: '12 vs 3', total: 12, up: 3, tc: 2, at: 'S', below: 'H' },
-  { id: '12v2', name: '12 vs 2', total: 12, up: 2, tc: 3, at: 'S', below: 'H' },
-  { id: '10v10', name: '10 vs 10', total: 10, up: 10, tc: 4, at: 'D', below: 'H' },
-  { id: '10vA', name: '10 vs A', total: 10, up: 11, tc: 4, at: 'D', below: 'H' },
-  { id: '9v2', name: '9 vs 2', total: 9, up: 2, tc: 1, at: 'D', below: 'H' },
+  { id: 'ins', group: 'core', kind: 'ins', name: 'Insurance', tc: 3, at: 'Y', below: 'N', up: 11 },
+  { id: '16v10', group: 'core', kind: 'play', name: '16 vs 10', total: 16, up: 10, tc: 0, at: 'S', below: 'H' },
+  { id: '15v10', group: 'core', kind: 'play', name: '15 vs 10', total: 15, up: 10, tc: 4, at: 'S', below: 'H' },
+  { id: '12v3', group: 'core', kind: 'play', name: '12 vs 3', total: 12, up: 3, tc: 2, at: 'S', below: 'H' },
+  { id: '12v2', group: 'core', kind: 'play', name: '12 vs 2', total: 12, up: 2, tc: 3, at: 'S', below: 'H' },
+  { id: '10v10', group: 'core', kind: 'play', name: '10 vs 10', total: 10, up: 10, tc: 4, at: 'D', below: 'H' },
+  { id: '10vA', group: 'core', kind: 'play', name: '10 vs A', total: 10, up: 11, tc: 4, at: 'D', below: 'H' },
+  { id: '9v2', group: 'core', kind: 'play', name: '9 vs 2', total: 9, up: 2, tc: 1, at: 'D', below: 'H' },
+  // Low-count hits: basic strategy stands; hit once the count drops below the index.
+  { id: '12v4', group: 'low', kind: 'play', name: '12 vs 4', total: 12, up: 4, tc: 0, at: 'S', below: 'H' },
+  { id: '12v5', group: 'low', kind: 'play', name: '12 vs 5', total: 12, up: 5, tc: -2, at: 'S', below: 'H' },
+  { id: '12v6', group: 'low', kind: 'play', name: '12 vs 6', total: 12, up: 6, tc: -1, at: 'S', below: 'H' },
+  { id: '13v2', group: 'low', kind: 'play', name: '13 vs 2', total: 13, up: 2, tc: 0, at: 'S', below: 'H' },
+  { id: '13v3', group: 'low', kind: 'play', name: '13 vs 3', total: 13, up: 3, tc: -1, at: 'S', below: 'H' },
+  // Extra doubles and stands.
+  { id: '11vA', group: 'extra', kind: 'play', name: '11 vs A', total: 11, up: 11, tc: 1, at: 'D', below: 'H' },
+  { id: '9v7', group: 'extra', kind: 'play', name: '9 vs 7', total: 9, up: 7, tc: 3, at: 'D', below: 'H' },
+  { id: '8v6', group: 'extra', kind: 'play', name: '8 vs 6', total: 8, up: 6, tc: 2, at: 'D', below: 'H' },
+  { id: '8v5', group: 'extra', kind: 'play', name: '8 vs 5', total: 8, up: 5, tc: 4, at: 'D', below: 'H' },
+  { id: '16v9', group: 'extra', kind: 'play', name: '16 vs 9', total: 16, up: 9, tc: 5, at: 'S', below: 'H' },
+  // Surrender (only when the surrender toggle is on). Below the index, play the hand normally.
+  { id: 'R15v10', group: 'surrender', kind: 'surrender', name: '15 vs 10', total: 15, up: 10, tc: 0, at: 'R', below: 'play' },
+  { id: 'R14v10', group: 'surrender', kind: 'surrender', name: '14 vs 10', total: 14, up: 10, tc: 3, at: 'R', below: 'play' },
+  { id: 'R15v9', group: 'surrender', kind: 'surrender', name: '15 vs 9', total: 15, up: 9, tc: 2, at: 'R', below: 'play' },
+  { id: 'R15vA', group: 'surrender', kind: 'surrender', name: '15 vs A', total: 15, up: 11, tc: 1, at: 'R', below: 'play' },
 ];
-export const devNote = (d) => (d.id === 'ins'
-  ? `Insurance: take at TC ≥ ${signed(d.tc)}`
-  : `${d.name}: ${ACTIONS[d.at]} at TC ≥ ${signed(d.tc)}, otherwise ${ACTIONS[d.below]}`);
+export const activeDevs = (surrender) => DEVS.filter((d) => surrender || d.kind !== 'surrender');
+
+export function devNote(d) {
+  if (d.kind === 'ins') return `Insurance: take at TC ≥ ${signed(d.tc)}`;
+  if (d.kind === 'surrender') return `${d.name}: Surrender at TC ≥ ${signed(d.tc)}`;
+  if (d.group === 'low') return `${d.name}: Hit at TC ≤ ${signed(d.tc - 1)}, otherwise Stand`;
+  return `${d.name}: ${ACTIONS[d.at]} at TC ≥ ${signed(d.tc)}, otherwise ${ACTIONS[d.below]}`;
+}
 
 export const insuranceCorrect = (tc) => tc >= 3;
 
 // Correct play, applying deviations when a true count is given.
-// Deviations apply to hard totals (not to pairs basic strategy splits).
+// o = { canDouble, canSplit, canSurrender }. Basic strategy itself never surrenders;
+// surrender only comes from the four surrender deviations (toggle on).
+// Deviations apply to hard totals, not to pairs that basic strategy splits.
 export function correctAction(cards, up, o, tc = null) {
   const b = basicStrategy(cards, up, o);
   const res = { action: b.action, basic: b.action, info: b, dev: null, note: null };
   if (tc == null || b.soft || (b.kind === 'pair' && b.action === 'P')) return res;
-  const d = DEVS.find((x) => x.total === b.total && x.up === up);
-  if (!d) return res;
+  let surrDev = null;
+  if (o.canSurrender) {
+    surrDev = DEVS.find((x) => x.kind === 'surrender' && x.total === b.total && x.up === up);
+    if (surrDev && tc >= surrDev.tc) return { ...res, action: 'R', dev: surrDev, note: devNote(surrDev) };
+  }
+  const d = DEVS.find((x) => x.kind === 'play' && x.total === b.total && x.up === up);
+  if (!d) return surrDev ? { ...res, dev: surrDev, note: devNote(surrDev) } : res;
   let a = tc >= d.tc ? d.at : d.below;
   if (a === 'D' && !o.canDouble) a = 'H';
   return { ...res, action: a, dev: d, note: devNote(d) };
