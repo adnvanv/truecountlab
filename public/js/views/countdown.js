@@ -4,7 +4,10 @@ import { hiLo, makeDecks, shuffleInPlace, randInt, pick } from '../cards.js';
 import { addRun } from '../store.js';
 import { createAmbience } from '../audio.js';
 
-const GOAL_MS = 30000;
+// Goal pace: a full deck in under 30s, i.e. about 0.58s per card.
+export const GOAL_PER_CARD = 30000 / 52;
+export const RANGES = { '10-15': [10, 15], '15-20': [15, 20], '20-30': [20, 30], '26-26': [26, 26], '52-52': [52, 52] };
+const RANGE_LABELS = [['10-15', '10–15 cards'], ['15-20', '15–20 cards'], ['20-30', '20–30 cards'], ['26-26', 'Half deck (26)'], ['52-52', 'Full deck (52)']];
 
 const CHATTER = [
   () => `Seat ${1 + randInt(7)}: "Come on, ${pick(['five', 'six', 'ten', 'face'])}!"`,
@@ -42,7 +45,6 @@ export function mount(root, ctx, { distraction = false } = {}) {
   let runId = 0;
   let phase = 'idle'; // idle | running | answer | result
   let cards = [];
-  let burned = null;
   let i = 0;
   let t0 = 0;
   let elapsed = 0;
@@ -54,7 +56,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
 
   const clock = h('div', { class: 'clock mono' }, '0.0s');
   const prog = h('div', { class: 'muted' });
-  const goal = h('div', { class: 'goal' }, 'Goal: finish at exactly 0 in under 30s');
+  const goal = h('div', { class: 'goal' }, 'Goal: right count at deck pace (≤ 0.58s per card)');
   const stage = h('div', { class: 'stage tap', onclick: () => { if (phase === 'running' && !cfg.auto) next(); } },
     h('div', { class: 'stage-hint' }, cfg.auto ? 'Press Start — cards flip automatically.' : 'Press Start. Tap the card or press Space for the next one.'));
   const popLayer = h('div', { class: 'popup-layer' });
@@ -70,11 +72,12 @@ export function mount(root, ctx, { distraction = false } = {}) {
     onchange: () => ctx.save(),
   });
   msOut.textContent = `${cfg.ms} ms · ${secs(cfg.ms * 52)} per deck`;
+  if (!RANGES[cfg.range]) cfg.range = '15-20';
 
   const toolbar = h('div', { class: 'panel toolbar' },
     field('Pace', select([['1', 'Auto flip'], ['0', 'Tap / Space']], cfg.auto ? '1' : '0', (v) => { cfg.auto = v === '1'; ctx.save(); })),
     field('Auto speed', h('div', { class: 'range' }, speedIn, msOut)),
-    field('Check', select([['0', 'Classic (ends at 0)'], ['1', 'Remove 1 card (keeps you honest)']], cfg.burn ? '1' : '0', (v) => { cfg.burn = v === '1'; ctx.save(); })),
+    field('Cards per run', select(RANGE_LABELS, cfg.range, (v) => { cfg.range = v; ctx.save(); })),
     startBtn);
   const distractBar = distraction ? h('div', { class: 'panel toolbar' },
     toggle(cfg, 'audio', 'Casino audio', () => ctx.save()),
@@ -89,8 +92,8 @@ export function mount(root, ctx, { distraction = false } = {}) {
 
   root.append(h('section', { class: 'view' },
     distraction
-      ? head('Distraction Mode', 'The single-deck countdown with a noisy casino around you: crowd noise, chips, slots, voices calling out numbers, chatter, and people asking you things. Answer the pop-ups and keep the count.')
-      : head('Single-Deck Countdown', 'Flip through one deck and keep the Hi-Lo running count. A full deck always ends at 0, so turn on "Remove 1 card" to make the final count something you can’t guess.'),
+      ? head('Distraction Mode', 'The countdown drill with a noisy casino around you: crowd noise, chips, slots, voices calling out numbers, chatter, and people asking you things. Answer the pop-ups and keep the count.')
+      : head('Countdown', 'Cards flip from a fresh deck — a random 15–20 by default — then you enter the Hi-Lo running count. The stop point is random, so you can’t guess the answer.'),
     toolbar, distractBar,
     h('div', { class: 'timer-row' }, clock, prog, goal),
     h('div', { class: distraction ? 'stage-wrap with-chatter' : 'stage-wrap' }, h('div', { class: 'stage-box' }, stage, popLayer), distraction ? chatter : null),
@@ -106,7 +109,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
       h('span', {}, `Accuracy ${runs.length ? Math.round((100 * ok.length) / runs.length) : 0}% (${runs.length})`),
       h('span', {}, `Best ${best ? secs(best) : '—'}`),
       h('span', {}, `Goal met ${goals}×`),
-      distraction ? h('span', {}, `Pop-ups answered ${popupRate()}`) : null,
+      ...(distraction ? [h('span', {}, `Pop-ups answered ${popupRate()}`)] : []),
       h('span', { class: 'dots' }, last.map((r) => h('i', { class: r.goal ? 'gold' : r.ok ? 'ok' : 'no', title: `${r.ok ? 'correct' : 'miss'} · ${secs(r.ms)}` }))));
   }
   function popupRate() {
@@ -123,9 +126,8 @@ export function mount(root, ctx, { distraction = false } = {}) {
   async function start() {
     if (phase === 'running') return;
     const id = ++runId;
-    const deck = shuffleInPlace(makeDecks(1));
-    burned = cfg.burn ? deck.pop() : null;
-    cards = deck;
+    const [lo, hi] = RANGES[cfg.range];
+    cards = shuffleInPlace(makeDecks(1)).slice(0, lo + randInt(hi - lo + 1));
     i = 0;
     popStats = { shown: 0, ok: 0 };
     answer.replaceChildren();
@@ -208,7 +210,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
     clock.textContent = secs(elapsed);
     if (distraction) stopDistractions();
     phase = 'answer';
-    stage.replaceChildren(h('div', { class: 'stage-hint' }, 'Deck done. Final running count?'));
+    stage.replaceChildren(h('div', { class: 'stage-hint' }, `${cards.length} cards. What's the running count?`));
     const f = numberField('Final count');
     answer.replaceChildren(h('form', {
       class: 'answer-form',
@@ -219,23 +221,26 @@ export function mount(root, ctx, { distraction = false } = {}) {
 
   function grade(guess) {
     phase = 'result';
-    const expected = burned ? -hiLo(burned) : 0;
+    const expected = cards.reduce((s, c) => s + hiLo(c), 0);
     const ok = guess === expected;
-    const goalMet = ok && elapsed < GOAL_MS;
+    const perCard = elapsed / cards.length;
+    const goalMet = ok && perCard <= GOAL_PER_CARD;
     addRun(st, {
-      ms: Math.round(elapsed), ok, goal: goalMet, exp: expected, diff: guess - expected, auto: cfg.auto, speed: cfg.auto ? cfg.ms : null, burn: !!burned,
+      ms: Math.round(elapsed), ok, goal: goalMet, n: cards.length, exp: expected, diff: guess - expected, auto: cfg.auto, speed: cfg.auto ? cfg.ms : null,
       ...(distraction ? { popups: popStats.shown, popupsOk: popStats.ok } : {}),
     });
     ctx.save();
     startBtn.disabled = false;
     const kids = [
       h('div', { class: `verdict ${ok ? 'good' : 'bad'}` },
-        ok ? `✓ ${signed(expected)} in ${secs(elapsed)}` : `✗ You said ${signed(guess)} — the count was ${signed(expected)} (off by ${Math.abs(guess - expected)})`,
-        goalMet ? h('span', { class: 'goal-badge' }, 'Goal met') : ok ? h('span', { class: 'muted' }, ` · ${secs(elapsed - GOAL_MS)} over the 30s goal`) : null),
+        ok ? `✓ ${signed(expected)} after ${cards.length} cards in ${secs(elapsed)}` : `✗ You said ${signed(guess)} — the count was ${signed(expected)} (off by ${Math.abs(guess - expected)})`,
+        goalMet ? h('span', { class: 'goal-badge' }, 'Goal met') : ok ? h('span', { class: 'muted' }, ` · ${(perCard / 1000).toFixed(2)}s per card, goal is 0.58s`) : null),
     ];
-    if (burned) {
-      kids.push(h('div', { class: 'burn' }, h('span', {}, 'Removed card:'), cardEl(burned, { size: 'sm' }),
-        h('span', { class: 'muted' }, `Hi-Lo ${signed(hiLo(burned))}, so the deck ends at ${signed(expected)}.`)));
+    if (!ok) {
+      let run = 0;
+      kids.push(h('div', { class: 'review-title' }, 'Review (tag · running count)'),
+        h('div', { class: 'review' }, cards.map((c) => { const t = hiLo(c); run += t; return h('div', { class: 'rv' },
+          cardEl(c, { size: 'sm' }), h('div', { class: `tag ${t > 0 ? 'pos' : t < 0 ? 'neg' : ''}` }, signed(t)), h('div', { class: 'run' }, signed(run))); })));
     }
     if (distraction) kids.push(h('div', { class: 'muted' }, `Pop-ups: ${popStats.ok} of ${popStats.shown} answered correctly.`));
     kids.push(h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: start }, 'Again', h('kbd', {}, 'Enter'))));

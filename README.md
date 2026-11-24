@@ -12,13 +12,13 @@ A blackjack card-counting trainer for one strategy:
 
 ## Home
 The home screen has a **ready-to-play checklist** that unlocks once all four gates are met at the same time:
-- 5 countdowns in a row ending at exactly 0, each under 30s
+- 5 countdowns in a row with the right count at deck pace (≤ 0.58s per card)
 - 98%+ basic strategy over the last 200 hands
 - 95%+ true count over the last 100 drills
 - 95%+ deviations over the last 100 hands
 
 ## Modes
-1. **Countdown:** single deck at an adjustable speed (or tap/Space). The goal is to finish at 0 in under 30s. You can optionally remove a card so the answer can't be guessed.
+1. **Countdown:** a random 15–20 cards from a fresh deck (other lengths are selectable), then you enter the running count. Misses show a card-by-card review. The goal is the right count at deck pace (≤ 0.58s per card).
 2. **Distraction:** the same countdown with synthesized casino audio, spoken numbers, a chatter ticker, and pop-up questions.
 3. **True Count:** a running count plus a discard tray (or a decks-remaining number) → enter the true count. Mistakes are classified, e.g. rounding, dividing by decks played, or a bad deck estimate.
 4. **Basic Strategy:** random hands, instant feedback, a mistake heatmap, and an optional focus on weak spots.

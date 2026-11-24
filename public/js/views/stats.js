@@ -57,7 +57,7 @@ function detail(id, s, G) {
 
   if (id === 'countdown' || id === 'distraction') {
     const best = ok.length ? Math.min(...ok.map((r) => r.ms)) : null;
-    const extra = [['Best correct', best ? secs(best) : '—'], ['Under 30s & correct', runs.filter((r) => r.goal).length]];
+    const extra = [['Best correct', best ? secs(best) : '—'], ['Correct at deck pace', runs.filter((r) => r.goal).length]];
     if (id === 'distraction') {
       const n = runs.reduce((a, r) => a + (r.popups || 0), 0);
       extra.push(['Pop-ups answered', pct(runs.reduce((a, r) => a + (r.popupsOk || 0), 0), n)]);

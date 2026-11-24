@@ -4,7 +4,7 @@ import { RULES } from '../cards.js';
 import { readiness } from '../readiness.js';
 
 const MODES = [
-  ['#countdown', '1', 'Countdown', 'One deck to 0 in under 30 seconds.'],
+  ['#countdown', '1', 'Countdown', '15–20 cards, then name the count.'],
   ['#distraction', '2', 'Distraction', 'The same countdown inside a noisy casino.'],
   ['#truecount', '3', 'True Count', 'Running count ÷ decks from the tray.'],
   ['#basic', '4', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
