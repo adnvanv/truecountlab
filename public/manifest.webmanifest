@@ -1,0 +1,9 @@
+{
+  "name": "Count Trainer",
+  "short_name": "Count",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b3326",
+  "theme_color": "#0b3326",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

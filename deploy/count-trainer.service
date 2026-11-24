@@ -1,0 +1,17 @@
+[Unit]
+Description=Blackjack count trainer (Tailscale only, port 3040)
+# Keep retrying at boot until Tailscale has brought its address up.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/blackjack
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=HOST=100.85.72.107
+Environment=PORT=3040
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target
