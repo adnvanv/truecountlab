@@ -40,7 +40,8 @@ const SECURITY_HEADERS = {
   'referrer-policy': 'strict-origin-when-cross-origin',
   'x-frame-options': 'DENY',
   'permissions-policy': 'camera=(), geolocation=(), payment=()',
-  'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  // Cloudflare Web Analytics (cookieless visitor counts) is injected by Cloudflare's edge.
+  'content-security-policy': "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 
 function send(res, code, body, type = 'text/plain; charset=utf-8') {

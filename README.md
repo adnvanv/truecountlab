@@ -44,6 +44,8 @@ git push
 ```
 `git push` sends `main` to GitHub and to a bare repo on the server. The server's `post-receive` hook resets the live checkout to the pushed `main`, installs `deploy/count-trainer.service`, and restarts the systemd user service.
 
+The public site reaches the server through a **Cloudflare Tunnel**: `cloudflared` runs on the server as the `cloudflared` user service (`deploy/cloudflared.service`) and forwards `truecountlab.com` to the app on `127.0.0.1:3040`. No ports are opened on the network. Requests that come through Cloudflare are treated as public: they can't use the `/api/state` save file (it has no login yet), and they're redirected to `https://truecountlab.com`.
+
 Server-only files stay out of git and survive deploys:
 - `.env` sets `HOST`/`PORT` (the service reads it; default `127.0.0.1:3040`).
 - `data/` holds saved progress.

@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloudflare Tunnel: truecountlab.com -> count trainer
+After=network-online.target
+# Keep retrying forever if Cloudflare or the network is briefly unreachable.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# cloudflared lives in ~/.local/bin (installed without sudo). The tunnel's config and
+# credentials are in ~/.cloudflared/ on the server and are never committed.
+ExecStart=%h/.local/bin/cloudflared --no-autoupdate tunnel --config %h/.cloudflared/config.yml run truecountlab
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
