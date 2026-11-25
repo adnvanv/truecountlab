@@ -1,14 +1,12 @@
-# Count Trainer
+# TrueCountLab
 
-A blackjack card-counting trainer for one strategy:
+A blackjack card-counting trainer for one strategy, coming soon at **truecountlab.com**:
 
 - **Game:** 6 decks, S17, DAS, 3:2, no surrender, 75% penetration, $25 minimum.
 - **Count:** Hi-Lo. True count = running count ÷ decks remaining, with decks estimated to the nearest half deck and the result rounded down.
 - **Deviations:** core: insurance +3, 16v10 stand 0, 15v10 stand +4, 12v3 stand +2, 12v2 stand +3, 10v10 double +4, 10vA double +4, 9v2 double +1. Low-count hits: 12v4 below 0, 12v5 below −2, 12v6 below −1, 13v2 at −1 or lower, 13v3 at −2 or lower. Extras: 11vA double +1, 9v7 double +3, 8v6 double +2, 8v5 double +4, 16v9 stand +5. With the surrender toggle on (off by default): 15v10 0, 14v10 +3, 15v9 +2, 15vA +1.
 - **Bet ramp:** $25 at TC ≤ +1, $50 at +2/+3, $75 at +4 and up.
 - **Bankroll:** $3,000 with a $500 session buy-in. The stop-loss is the buy-in.
-
-**Live:** http://boward:3040. It's reachable only over Tailscale: the server binds to the Optiplex's Tailscale IP, 100.85.72.107.
 
 ## Home
 The home screen has a **ready-to-play checklist** that unlocks once all four gates are met at the same time:
@@ -38,12 +36,19 @@ Progress is saved in localStorage and synced to `data/state.json` on the server,
 ```
 node server.js        # http://127.0.0.1:3040
 ```
-It's vanilla JS with ES modules: no build step and no dependencies.
+It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
 
 ## Deploy
 ```
 git push
 ```
-`origin` is the bare repo `boward@boward:blackjack.git`. Its `post-receive` hook resets `~/blackjack` to the pushed `main`, installs `deploy/count-trainer.service`, and restarts the systemd user service. `data/` is untracked, so it survives deploys.
+`git push` sends `main` to GitHub and to a bare repo on the server. The server's `post-receive` hook resets the live checkout to the pushed `main`, installs `deploy/count-trainer.service`, and restarts the systemd user service.
+
+Server-only files stay out of git and survive deploys:
+- `.env` sets `HOST`/`PORT` (the service reads it; default `127.0.0.1:3040`).
+- `data/` holds saved progress.
 
 On the server: `systemctl --user status count-trainer` and `journalctl --user -u count-trainer`.
+
+## Credits
+Card and chip sounds: [Casino Audio](https://kenney.nl/assets/casino-audio) by Kenney (CC0).

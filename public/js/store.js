@@ -1,5 +1,5 @@
 // Settings, stats, bankroll and sessions. Saved to localStorage and synced to
-// the Optiplex (api/state) so phone and PC share progress.
+// the server (api/state) so phone and PC share progress.
 import { RULES } from './cards.js';
 
 const KEY = 'bjtrainer.v2';

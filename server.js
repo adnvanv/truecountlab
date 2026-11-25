@@ -1,5 +1,5 @@
 // Zero-dependency static server + tiny JSON state API for the count trainer.
-// Usage: HOST=100.85.72.107 PORT=3040 node server.js
+// Usage: HOST=127.0.0.1 PORT=3040 node server.js
 'use strict';
 const http = require('http');
 const fs = require('fs');

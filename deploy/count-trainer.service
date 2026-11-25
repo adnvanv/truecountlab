@@ -1,6 +1,6 @@
 [Unit]
-Description=Blackjack count trainer (Tailscale only, port 3040)
-# Keep retrying at boot until Tailscale has brought its address up.
+Description=TrueCountLab blackjack count trainer
+# Keep retrying at boot until the network address in .env is up.
 StartLimitIntervalSec=0
 
 [Service]
@@ -9,8 +9,9 @@ WorkingDirectory=%h/blackjack
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
-Environment=HOST=100.85.72.107
-Environment=PORT=3040
+# HOST and PORT come from ~/blackjack/.env on the server (kept out of git).
+# Without it the server listens on 127.0.0.1:3040.
+EnvironmentFile=-%h/blackjack/.env
 Environment=NODE_ENV=production
 
 [Install]

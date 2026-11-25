@@ -26,7 +26,7 @@ export function mount(root, ctx) {
         }))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Data'),
-        h('p', { class: 'muted' }, 'Progress is saved in this browser and synced to the Optiplex, so your phone and PC share it.'),
+        h('p', { class: 'muted' }, 'Progress is saved in this browser and synced to the server, so your phone and PC share it.'),
         h('div', { class: 'row' },
           h('button', {
             class: 'btn',
