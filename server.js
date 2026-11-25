@@ -5,7 +5,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const HOST = process.env.HOST || '127.0.0.1';
+// HOST may list several addresses, e.g. "127.0.0.1,100.64.0.5" (loopback for the
+// Cloudflare tunnel plus a private-network address).
+const HOSTS = String(process.env.HOST || '127.0.0.1').split(',').map((s) => s.trim()).filter(Boolean);
 const PORT = Number(process.env.PORT) || 3040;
 const ROOT = path.join(__dirname, 'public');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -93,8 +95,7 @@ function handleStatic(req, res) {
   });
 }
 
-http
-  .createServer((req, res) => {
+function handle(req, res) {
     const url = req.url || '/';
     if (viaCloudflare(req)) {
       // Public traffic: one canonical https address, no www.
@@ -115,5 +116,16 @@ http
     }
     if (url === '/healthz') return send(res, 200, 'ok');
     return handleStatic(req, res);
-  })
-  .listen(PORT, HOST, () => console.log(`Count trainer listening on http://${HOST}:${PORT}`));
+}
+
+// One listener per address. If an address isn't up yet (say the private network is
+// still connecting at boot), keep retrying it without taking the others down.
+function listen(host) {
+  const server = http.createServer(handle);
+  server.on('error', (err) => {
+    console.error(`Can't listen on ${host}:${PORT} (${err.code}); retrying in 5s`);
+    setTimeout(() => listen(host), 5000);
+  });
+  server.listen(PORT, host, () => console.log(`Count trainer listening on http://${host}:${PORT}`));
+}
+HOSTS.forEach(listen);
