@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 WorkingDirectory=%h/blackjack
-ExecStart=/usr/bin/node server.js
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server.js
 Restart=always
 RestartSec=5
 # HOST and PORT come from ~/blackjack/.env on the server (kept out of git).

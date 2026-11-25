@@ -2,6 +2,7 @@
 import { h, money } from '../ui.js';
 import { RULES } from '../cards.js';
 import { readiness } from '../readiness.js';
+import { currentUser } from '../store.js';
 
 const MODES = [
   ['#countdown', '1', 'Countdown', '15–20 cards, then name the count.'],
@@ -20,6 +21,10 @@ export function mount(root, ctx) {
   const r = readiness(ctx.stats);
   const G = ctx.state;
   root.append(h('section', { class: 'view home' },
+    currentUser() ? null : h('div', { class: 'guest-banner' },
+      h('span', {}, "You're playing as a guest, so your progress is saved in this browser only. Create a free account to keep it on every device."),
+      h('a', { class: 'btn primary sm', href: '#account?mode=signup' }, 'Create account'),
+      h('a', { class: 'link', href: '#account' }, 'Sign in')),
     h('div', { class: `ready-card ${r.ready ? 'unlocked' : 'locked'}` },
       h('div', { class: 'ready-head' },
         h('div', { class: 'ready-icon', 'aria-hidden': 'true' }, r.ready ? '✓' : '🔒'),

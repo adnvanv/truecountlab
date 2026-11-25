@@ -1,6 +1,6 @@
 {
-  "name": "Count Trainer",
-  "short_name": "Count",
+  "name": "TrueCountLab",
+  "short_name": "TrueCountLab",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b3326",

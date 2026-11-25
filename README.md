@@ -30,11 +30,34 @@ The home screen has a **ready-to-play checklist** that unlocks once all four gat
 
 **Stats** shows accuracy, speed, error types, and progress by day for each mode. **Strategy** is the reference chart.
 
-Progress is saved in localStorage and synced to `data/state.json` on the server, so your phone and PC share it.
+## Accounts
+Guests can play everything; their progress stays in the browser. Accounts save progress to the server so it follows you to any device:
+- **Sign-in:** email + password (scrypt-hashed), or Google / Discord (OAuth). A Google/Discord login is never auto-merged into an existing password account with the same email; you connect it from the Account page while signed in.
+- **Sessions:** random tokens in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https). Only a SHA-256 of each token is stored.
+- **Sync:** one JSON document per account with a revision number. A stale save gets `409` plus the newer copy; the app merges (drill history is unioned, counters take the larger value) and retries.
+- **Guest → account:** signing up uploads the browser's guest progress. Signing in to an account that already has progress asks before adding it.
+- **Protection:** per-IP and per-account rate limits on sign-in, an origin check on every request that changes data, a Content-Security-Policy, and HSTS on the public site.
+- **Your data:** export as JSON or delete the account (and all progress) from the Account page. See `/privacy`.
+
+Data lives in `data/truecountlab.db` (Node's built-in SQLite, no npm dependencies).
+
+### Optional sign-in providers and email
+They switch on when their keys are in the server's `.env` (never in git):
+```
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+RESEND_API_KEY=...            # password-reset emails
+MAIL_FROM=TrueCountLab <no-reply@truecountlab.com>
+```
+OAuth redirect URIs: `https://truecountlab.com/auth/google/callback` and `https://truecountlab.com/auth/discord/callback`.
+
+`scripts/import-legacy.js` moves the old pre-accounts save file (`data/state.json`) into one account.
 
 ## Develop
 ```
-node server.js        # http://127.0.0.1:3040
+node --disable-warning=ExperimentalWarning server.js   # http://127.0.0.1:3040
 ```
 It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
 

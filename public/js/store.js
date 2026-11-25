@@ -1,8 +1,10 @@
-// Settings, stats, bankroll and sessions. Saved to localStorage and synced to
-// the server (api/state) so phone and PC share progress.
+// Settings, stats, bankroll and sessions.
+// Guests: saved in this browser. Signed in: also synced to the account (api/progress),
+// with revision numbers so devices merge instead of overwriting each other.
 import { RULES } from './cards.js';
 
-const KEY = 'bjtrainer.v2';
+const KEY = 'bjtrainer.v2'; // progress document
+const META_KEY = 'tcl.sync'; // { owner, rev, pending }: who this copy belongs to and its sync state
 const RUN_CAP = 600;
 
 export const DEFAULT_SETTINGS = {
@@ -36,10 +38,10 @@ export function freshStats() {
 }
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
-function merge(base, over) {
+function fill(base, over) {
   if (!isObj(over)) return base;
   for (const [k, v] of Object.entries(over)) {
-    if (isObj(base[k]) && isObj(v) && k !== 'misses' && k !== 'cells') merge(base[k], v);
+    if (isObj(base[k]) && isObj(v) && k !== 'misses' && k !== 'cells') fill(base[k], v);
     else base[k] = v;
   }
   return base;
@@ -48,53 +50,202 @@ function merge(base, over) {
 function normalize(raw) {
   return {
     savedAt: raw?.savedAt || 0,
-    settings: merge(structuredClone(DEFAULT_SETTINGS), raw?.settings),
-    stats: merge(freshStats(), raw?.stats),
+    settings: fill(structuredClone(DEFAULT_SETTINGS), raw?.settings),
+    stats: fill(freshStats(), raw?.stats),
     bankroll: typeof raw?.bankroll === 'number' ? raw.bankroll : RULES.bankroll,
     session: raw?.session || null,
     sessions: Array.isArray(raw?.sessions) ? raw.sessions : [],
   };
 }
 
-function readLocal() {
-  try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
-}
-function writeLocal(s) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage unavailable */ }
+const FIELDS = ['savedAt', 'settings', 'stats', 'bankroll', 'session', 'sessions'];
+const payload = () => Object.fromEntries(FIELDS.map((k) => [k, state[k]]));
+
+// Swap in a whole new document, keeping the same state object (the app holds on to it).
+function replaceContents(next) {
+  for (const k of FIELDS) state[k] = next[k];
 }
 
-let state;
-let serverOK = false;
+const hasProgress = (s) => Object.values(s.stats).some((b) => b.runs?.length || b.hands)
+  || Object.keys(s.stats.basic.cells).length > 0 || s.sessions.length > 0;
+
+// ---- merging ---------------------------------------------------------------------
+// mode 'sum': adding a separate history (guest progress into an account).
+// mode 'max': two copies of the same history that drifted apart (two devices); taking
+//             the larger count never double-counts.
+function mergeInto(target, src, mode) {
+  const num = (a, b) => (mode === 'sum' ? (a || 0) + (b || 0) : Math.max(a || 0, b || 0));
+  for (const [name, bucket] of Object.entries(src.stats)) {
+    const t = target.stats[name];
+    if (!t) { target.stats[name] = bucket; continue; }
+    if (Array.isArray(bucket.runs)) {
+      const seen = new Set(t.runs.map((r) => `${r.t}:${r.ms ?? ''}:${r.ok}`));
+      for (const r of bucket.runs) if (!seen.has(`${r.t}:${r.ms ?? ''}:${r.ok}`)) t.runs.push(r);
+      t.runs.sort((a, b) => a.t - b.t);
+      if (t.runs.length > RUN_CAP) t.runs.splice(0, t.runs.length - RUN_CAP);
+    }
+    if (bucket.cells) {
+      for (const [k, c] of Object.entries(bucket.cells)) {
+        const tc = t.cells[k] || (t.cells[k] = { n: 0, miss: 0 });
+        tc.n = num(tc.n, c.n);
+        tc.miss = num(tc.miss, c.miss);
+      }
+    }
+    for (const [k, v] of Object.entries(bucket)) {
+      if (typeof v === 'number') t[k] = num(t[k], v);
+    }
+    if (bucket.misses) {
+      t.misses = t.misses || {};
+      for (const [k, v] of Object.entries(bucket.misses)) t.misses[k] = num(t.misses[k], v);
+    }
+  }
+  const ids = new Set(target.sessions.map((s) => s.id));
+  for (const s of src.sessions) if (!ids.has(s.id)) target.sessions.push(s);
+  target.sessions.sort((a, b) => a.t - b.t);
+  if (!target.session && src.session && mode === 'max') target.session = src.session;
+}
+
+// ---- local storage --------------------------------------------------------------
+function readJSON(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function writeJSON(key, v) {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ }
+}
+const writeLocal = () => { writeJSON(KEY, state); writeJSON(META_KEY, meta); };
+
+// ---- state ------------------------------------------------------------------------
+let state = null;
+let meta = { owner: null, rev: 0, pending: false };
+let user = null;
 let timer = null;
+let pushing = false;
+let pushAgain = false;
+const listeners = new Set();
+
+export const currentUser = () => user;
+export const onChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+const emit = () => listeners.forEach((fn) => fn(user));
+
+// True when progress is saved to an account (not just this browser).
+export const syncing = () => Boolean(user);
+
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method,
+    headers: body ? { 'content-type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    cache: 'no-store',
+  });
+  let data = {};
+  try { data = await r.json(); } catch { /* empty body */ }
+  return { status: r.status, ok: r.ok, data };
+}
 
 export async function init() {
-  const local = readLocal();
-  let remote = null;
-  try {
-    const r = await fetch('api/state', { cache: 'no-store' });
-    if (r.ok) { remote = await r.json(); serverOK = true; }
-  } catch { /* offline */ }
-  state = normalize((remote?.savedAt || 0) > (local?.savedAt || 0) ? remote : local);
+  state = normalize(readJSON(KEY));
+  meta = { owner: null, rev: 0, pending: false, ...readJSON(META_KEY) };
   addEventListener('pagehide', flush);
+  try {
+    const me = await api('GET', '/api/me');
+    if (me.ok && me.data.user) await adoptUser(me.data.user, { quiet: true });
+  } catch { /* offline: keep the local copy */ }
   return state;
 }
 
-function push() {
+// Make this browser's progress belong to `u` (after signing in or on page load).
+export async function adoptUser(u, { quiet = false } = {}) {
+  user = u;
+  const remote = await api('GET', '/api/progress');
+  if (!remote.ok) { emit(); return; }
+  const remoteState = remote.data.data ? normalize(remote.data.data) : null;
+  if (meta.owner === u.id) {
+    // Same account: catch up with other devices, keeping unsynced local changes.
+    if (remote.data.rev > meta.rev && remoteState) {
+      if (meta.pending) mergeInto(state, remoteState, 'max');
+      else replaceContents(remoteState);
+    }
+  } else if (meta.owner == null) {
+    // Guest progress in this browser.
+    const guest = hasProgress(state) ? structuredClone(payload()) : null;
+    if (remoteState) {
+      replaceContents(remoteState);
+      if (guest && (quiet || confirm('Add the progress you made in this browser as a guest to your account?'))) {
+        mergeInto(state, normalize(guest), 'sum');
+        meta.pending = true;
+      }
+    } else {
+      meta.pending = true; // new account: upload what's here
+    }
+  } else {
+    // Another account's copy: replace it.
+    replaceContents(remoteState || normalize(null));
+    meta.pending = !remoteState;
+  }
+  meta.owner = u.id;
+  meta.rev = remote.data.rev;
+  writeLocal();
+  if (meta.pending) push();
+  emit();
+}
+
+// Signed out (by choice, or the session ended): forget this browser's copy of the account.
+export function signOut() {
+  user = null;
+  clearTimeout(timer);
+  replaceContents(normalize(null));
+  meta = { owner: null, rev: 0, pending: false };
+  writeLocal();
+  emit();
+}
+
+export function setUser(u) { user = u; emit(); }
+
+async function push() {
   timer = null;
-  if (!serverOK) return;
-  fetch('api/state', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(state), keepalive: true }).catch(() => {});
+  if (!user || !meta.pending) return;
+  if (pushing) { pushAgain = true; return; }
+  pushing = true;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await api('PUT', '/api/progress', { baseRev: meta.rev, data: payload() });
+      if (r.ok) { meta.rev = r.data.rev; meta.pending = false; writeJSON(META_KEY, meta); return; }
+      if (r.status === 409) {
+        // Another device saved first: merge its copy in and try again.
+        if (r.data.data) mergeInto(state, normalize(r.data.data), 'max');
+        meta.rev = r.data.rev;
+        writeLocal();
+        continue;
+      }
+      if (r.status === 401) { user = null; emit(); }
+      return; // offline or server error: stays pending and goes up with the next save
+    }
+  } catch { /* offline */ } finally {
+    pushing = false;
+    if (pushAgain) { pushAgain = false; schedule(); }
+  }
+}
+
+function schedule() {
+  clearTimeout(timer);
+  timer = setTimeout(push, 800);
 }
 
 export function save() {
   state.savedAt = Date.now();
-  writeLocal(state);
-  clearTimeout(timer);
-  timer = setTimeout(push, 800);
+  meta.pending = true;
+  writeLocal();
+  if (user) schedule();
 }
-function flush() { if (timer) { clearTimeout(timer); push(); } }
 
-// True when progress syncs to the server (private network only until accounts exist).
-export const syncing = () => serverOK;
+// Leaving the page: send what's waiting, if it's small enough for a keepalive request.
+function flush() {
+  if (!timer || !user) return;
+  clearTimeout(timer);
+  timer = null;
+  const body = JSON.stringify({ baseRev: meta.rev, data: payload() });
+  if (body.length < 60000) fetch('/api/progress', { method: 'PUT', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {});
+}
 
 export function resetStats() { state.stats = freshStats(); save(); }
 

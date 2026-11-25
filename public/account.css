@@ -1,0 +1,104 @@
+/* Account: sign-in forms, profile, the top-bar account chip, and the privacy page. */
+
+/* Top-bar account chip */
+.acct-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem; flex: none; text-decoration: none; white-space: nowrap;
+  padding: 0.3rem 0.8rem; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); font-weight: 600; font-size: 0.9rem;
+}
+.acct-chip:hover { border-color: var(--gold); }
+.acct-chip:not(.signed-in) { background: var(--gold); color: #1d1606; border-color: transparent; }
+.acct-chip.signed-in { padding-left: 0.3rem; }
+.avatar {
+  width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #1d1606; font-weight: 800; font-size: 0.9rem;
+}
+.avatar.big { width: 3.4rem; height: 3.4rem; font-size: 1.5rem; }
+.acct-name { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; }
+
+/* Forms */
+.account .auth-card { max-width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1.2rem; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 1rem; }
+.auth-tabs .btn { padding: 0.55rem; }
+.auth-form, .stack-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.stack-form { margin: 0.6rem 0 0.9rem; }
+.auth-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.auth-field .hint { font-size: 0.8rem; color: var(--dim); }
+.text-input {
+  width: 100%; font: inherit; color: var(--ink); background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line);
+  border-radius: 10px; padding: 0.65rem 0.75rem; min-height: 44px;
+}
+.text-input:focus { border-color: var(--gold); outline: 2px solid rgba(227, 188, 95, 0.35); outline-offset: 0; }
+.wide-btn { width: 100%; padding: 0.8rem; font-size: 1rem; }
+.form-error { color: var(--bad); font-weight: 600; min-height: 0; }
+.form-error:empty { display: none; }
+.auth-form .link { align-self: center; }
+.fine { font-size: 0.8rem; color: var(--dim); margin: 0; text-align: center; }
+.fine a, .account .small a { color: var(--muted); }
+.inline-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.inline-form .text-input { flex: 1; min-width: 10rem; }
+
+/* Sign in with Google / Discord */
+.oauth { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.4rem; }
+.oauth-btn { justify-content: flex-start; padding: 0.7rem 0.9rem; text-decoration: none; }
+.oauth-btn.google { background: #fff; color: #1f1f1f; border-color: #dadce0; }
+.oauth-btn.google:hover:not(:disabled) { background: #f1f3f4; }
+.oauth-btn.discord { background: #5865f2; color: #fff; border-color: transparent; }
+.oauth-btn.discord:hover:not(:disabled) { background: #4752c4; }
+.oauth-mark {
+  width: 1.6rem; height: 1.6rem; border-radius: 6px; display: grid; place-items: center; flex: none;
+  font: 800 0.95rem system-ui, sans-serif;
+}
+.oauth-btn.google .oauth-mark, .oauth-mark.google { color: #4285f4; background: #fff; border: 1px solid #dadce0; }
+.oauth-btn.discord .oauth-mark, .oauth-mark.discord { color: #fff; background: rgba(255, 255, 255, 0.18); }
+.oauth-mark.discord { background: #5865f2; }
+.oauth-mark.email { background: rgba(255, 255, 255, 0.1); color: var(--ink); }
+.or { display: flex; align-items: center; gap: 0.7rem; margin: 0.9rem 0; color: var(--dim); font-size: 0.82rem; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* Notices */
+.notice { max-width: 640px; padding: 0.7rem 0.9rem; border-radius: 12px; margin-bottom: 1rem; border-left: 4px solid; }
+.notice.good { background: rgba(106, 217, 154, 0.1); border-color: var(--good); color: #d8f7e5; }
+.notice.bad { background: rgba(255, 130, 119, 0.12); border-color: var(--bad); color: #ffe1dd; }
+
+/* Signed in */
+.profile-card {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.2rem;
+}
+.profile-card > div:nth-child(2) { flex: 1; min-width: 12rem; }
+.profile-name { font: 700 1.3rem Georgia, serif; }
+.small { font-size: 0.82rem; }
+.sync-dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--good); vertical-align: 0.05em; }
+.account-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 1rem; align-items: start; }
+.account-grid .panel { margin: 0; }
+.method-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-top: 1px solid var(--line); }
+.method-row:first-of-type { border-top: 0; }
+.method-text { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.method-text .muted { font-size: 0.82rem; }
+.danger-zone summary { cursor: pointer; color: var(--bad); font-weight: 700; }
+.danger-zone[open] summary { margin-bottom: 0.5rem; }
+
+/* Home: guest banner */
+.guest-banner {
+  display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 1rem;
+  padding: 0.75rem 1rem; border-radius: 14px; background: rgba(227, 188, 95, 0.1); border: 1px solid rgba(227, 188, 95, 0.35);
+}
+.guest-banner span { flex: 1; min-width: 14rem; }
+
+@media (max-width: 640px) {
+  .acct-chip { padding: 0.25rem 0.65rem; font-size: 0.85rem; }
+  .acct-chip.signed-in .acct-name { display: none; }
+  .acct-chip.signed-in { padding: 0.15rem; border: 0; }
+  .topbar .page-title { margin-left: auto; margin-right: 0.6rem; }
+  .account .auth-card { padding: 1rem; }
+  .profile-card { padding: 0.9rem; }
+}
+
+/* Privacy page */
+main.privacy { max-width: 720px; line-height: 1.6; }
+main.privacy h1 { margin-bottom: 0.2rem; }
+main.privacy h2 { margin: 1.6rem 0 0.4rem; }
+main.privacy ul { padding-left: 1.2rem; }
+main.privacy li { margin-bottom: 0.4rem; }
+main.privacy a:not(.btn) { color: var(--gold); }
+main.privacy code { background: rgba(0, 0, 0, 0.3); padding: 0 0.3rem; border-radius: 4px; }

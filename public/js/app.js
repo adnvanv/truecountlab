@@ -11,6 +11,7 @@ import * as chart from './views/chart.js';
 import * as settings from './views/settings.js';
 import * as home from './views/home.js';
 import * as calculator from './views/calculator.js';
+import * as accountView from './views/account.js';
 import { h } from './ui.js';
 import { configure as configureSound, loadSamples } from './sfx.js';
 
@@ -29,6 +30,8 @@ const VIEWS = [
   { id: 'stats', label: 'Stats', mount: stats.mount },
   { id: 'chart', label: 'Strategy', mount: chart.mount },
   { id: 'settings', label: 'Settings', mount: settings.mount },
+  { id: 'account', label: 'Account', mount: accountView.mount, hidden: true },
+  { id: 'reset', label: 'Reset password', mount: accountView.mount, hidden: true },
 ];
 
 const state = await store.init();
@@ -44,7 +47,7 @@ const ctx = {
 
 const nav = document.getElementById('nav');
 const view = document.getElementById('view');
-nav.append(...VIEWS.map((v, i) => h('a', { href: `#${v.id}`, 'data-id': v.id }, h('span', { class: 'num' }, i >= 1 && i <= 8 ? String(i) : ''), v.label)));
+nav.append(...VIEWS.filter((v) => !v.hidden).map((v, i) => h('a', { href: `#${v.id}`, 'data-id': v.id }, h('span', { class: 'num' }, i >= 1 && i <= 8 ? String(i) : ''), v.label)));
 
 // ---- phone navigation: bottom tab bar + bottom sheets ---------------------
 const DRILLS = [
@@ -61,6 +64,7 @@ const MORE = [
   ['calculator', '$', 'Bankroll Calc', 'EV, SD, risk of ruin'],
   ['chart', '♠', 'Strategy', 'Charts and deviations'],
   ['settings', '⚙', 'Settings', 'Table, sound, data'],
+  ['account', '👤', 'Account', 'Sign in and sync your progress'],
 ];
 const TABS = [
   { id: 'home', icon: '⌂', label: 'Home', views: ['home'] },
@@ -86,7 +90,18 @@ const tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Sections' }, TABS.map(
 document.body.append(tabbar, sheet);
 const pageTitle = h('div', { class: 'page-title' });
 const topbar = document.querySelector('.topbar');
-topbar.append(pageTitle);
+// Account button: "Sign in" for guests, your initial and name when signed in.
+const acct = h('a', { class: 'acct-chip', href: '#account' });
+function drawAcct() {
+  const u = store.currentUser();
+  acct.classList.toggle('signed-in', Boolean(u));
+  acct.title = u ? `Signed in as ${u.displayName}` : 'Sign in to save your progress to an account';
+  acct.replaceChildren(...(u
+    ? [h('span', { class: 'avatar', 'aria-hidden': 'true' }, u.displayName.slice(0, 1).toUpperCase()), h('span', { class: 'acct-name' }, u.displayName)]
+    : [h('span', { class: 'acct-name' }, 'Sign in')]));
+}
+drawAcct();
+topbar.append(pageTitle, acct);
 // The table fills exactly the window under the top bar, so it needs the bar's real height.
 const syncTopbar = () => document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
 new ResizeObserver(syncTopbar).observe(topbar);
@@ -94,7 +109,7 @@ syncTopbar();
 
 let unmount = null;
 function route() {
-  const id = location.hash.slice(1);
+  const id = location.hash.slice(1).split('?')[0];
   const v = VIEWS.find((x) => x.id === id) || VIEWS[0];
   if (typeof unmount === 'function') unmount();
   closeSheet();
@@ -104,9 +119,18 @@ function route() {
   for (const t of tabbar.children) t.classList.toggle('active', TABS.find((x) => x.id === t.dataset.tab).views.includes(v.id));
   for (const a of nav.children) a.classList.toggle('active', a.dataset.id === v.id);
   nav.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  document.title = `${v.label} · Count Trainer`;
+  document.title = `${v.label} · TrueCountLab`;
   unmount = v.mount(view, ctx);
   window.scrollTo(0, 0);
 }
 addEventListener('hashchange', route);
+
+// Signing in or out swaps in a different saved-progress document, so remount the page.
+let lastUserId = store.currentUser()?.id ?? null;
+store.onChange((u) => {
+  drawAcct();
+  configureSound(state.settings.sound);
+  const id = u?.id ?? null;
+  if (id !== lastUserId) { lastUserId = id; route(); }
+});
 route();

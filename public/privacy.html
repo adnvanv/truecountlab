@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacy · TrueCountLab</title>
+  <meta name="description" content="How TrueCountLab handles your account and practice data.">
+  <meta name="theme-color" content="#0b3326">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/#home"><span class="logo" aria-hidden="true">♠</span><span>TrueCountLab</span></a>
+  </header>
+  <main class="privacy">
+    <h1>Privacy</h1>
+    <p class="muted">Last updated November 2026.</p>
+
+    <p>TrueCountLab is a free practice tool for blackjack card counting. It uses play money only: there's no gambling, no real money and no ads. This page explains what it stores and why.</p>
+
+    <h2>If you play as a guest</h2>
+    <p>Your settings and progress are saved in your own browser (local storage) and aren't sent to us. Clearing your browser data removes them.</p>
+
+    <h2>If you create an account</h2>
+    <ul>
+      <li><strong>Account details:</strong> your display name and email address. Your display name is shown to other players on tables and leaderboards; your email is not.</li>
+      <li><strong>Password:</strong> stored only as a salted scrypt hash. We never store or see the password itself.</li>
+      <li><strong>Google or Discord sign-in:</strong> if you use it, we keep that service's account ID and the email it shares, so you can sign in again. We don't get your password for those services or access to anything else in them.</li>
+      <li><strong>Practice data:</strong> your settings, drill results and stats, simulator bankroll and sessions, and any casino sessions you log yourself.</li>
+    </ul>
+    <p>We use your email only to sign you in and to send password-reset emails you ask for. We don't sell or share your data, and we don't send marketing email.</p>
+
+    <h2>Cookies</h2>
+    <p>One cookie keeps you signed in (<code>tcl_session</code>). A short-lived cookie is used while you sign in with Google or Discord, to make sure the sign-in was started by you. There are no advertising or tracking cookies.</p>
+
+    <h2>Analytics and hosting</h2>
+    <p>The site is served through Cloudflare. Cloudflare Web Analytics counts visits without cookies and without tracking individual people. Account data is stored on our own server.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li><strong>Download your data:</strong> Account page → <em>Download my data</em> gives you everything saved to your account as a file.</li>
+      <li><strong>Delete your account:</strong> Account page → <em>Delete account</em> permanently removes your account, sign-in connections and all saved progress.</li>
+    </ul>
+
+    <h2>Questions</h2>
+    <p>Open an issue on the project's <a href="https://github.com/adnvanv/truecountlab/issues">GitHub page</a>.</p>
+
+    <p><a class="btn" href="/#home">Back to the trainer</a></p>
+  </main>
+</body>
+</html>
