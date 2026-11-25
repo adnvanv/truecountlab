@@ -2,6 +2,7 @@
 import { h, head, field, select, money } from '../ui.js';
 import { RULES } from '../cards.js';
 import { sfx, configure as configureSound, sampleStatus } from '../sfx.js';
+import { syncing } from '../store.js';
 
 export function mount(root, ctx) {
   const S = ctx.settings;
@@ -26,7 +27,7 @@ export function mount(root, ctx) {
         }))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Data'),
-        h('p', { class: 'muted' }, 'Progress is saved in this browser and synced to the server, so your phone and PC share it.'),
+        h('p', { class: 'muted' }, syncing() ? 'Progress is saved in this browser and synced to the server, so your phone and PC share it.' : 'Progress is saved in this browser only. Accounts that save it everywhere are coming soon.'),
         h('div', { class: 'row' },
           h('button', {
             class: 'btn',

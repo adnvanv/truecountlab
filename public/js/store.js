@@ -93,6 +93,9 @@ export function save() {
 }
 function flush() { if (timer) { clearTimeout(timer); push(); } }
 
+// True when progress syncs to the server (private network only until accounts exist).
+export const syncing = () => serverOK;
+
 export function resetStats() { state.stats = freshStats(); save(); }
 
 export function addRun(bucket, run) {

@@ -26,8 +26,23 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+const PUBLIC_HOST = process.env.PUBLIC_HOST || 'truecountlab.com';
+
+// Requests from the public internet arrive through Cloudflare Tunnel, and Cloudflare's
+// edge always sets CF-Connecting-IP (visitors can't strip it). Requests without it come
+// straight over the private network (Tailscale) or from this machine.
+const viaCloudflare = (req) => typeof req.headers['cf-connecting-ip'] === 'string';
+
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'x-frame-options': 'DENY',
+  'permissions-policy': 'camera=(), geolocation=(), payment=()',
+  'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+};
+
 function send(res, code, body, type = 'text/plain; charset=utf-8') {
-  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
+  res.writeHead(code, { ...SECURITY_HEADERS, 'content-type': type, 'cache-control': 'no-store' });
   res.end(body);
 }
 
@@ -68,6 +83,7 @@ function handleStatic(req, res) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'Not found');
     res.writeHead(200, {
+      ...SECURITY_HEADERS,
       'content-type': TYPES[path.extname(file)] || 'application/octet-stream',
       'content-length': st.size,
       'cache-control': 'no-cache',
@@ -80,7 +96,23 @@ function handleStatic(req, res) {
 http
   .createServer((req, res) => {
     const url = req.url || '/';
-    if (url === '/api/state' || url.startsWith('/api/state?')) return handleState(req, res);
+    if (viaCloudflare(req)) {
+      // Public traffic: one canonical https address, no www.
+      const host = String(req.headers.host || '').toLowerCase();
+      let proto = 'https';
+      try { proto = JSON.parse(req.headers['cf-visitor'] || '{}').scheme || proto; } catch { /* keep https */ }
+      if (host !== PUBLIC_HOST || proto !== 'https') {
+        res.writeHead(301, { location: `https://${PUBLIC_HOST}${url}` });
+        return res.end();
+      }
+      res.setHeader('strict-transport-security', 'max-age=31536000');
+    }
+    if (url === '/api/state' || url.startsWith('/api/state?')) {
+      // The shared save file has no login yet, so only the private network may use it.
+      // Public visitors save progress in their own browser until accounts arrive.
+      if (viaCloudflare(req)) return send(res, 404, '{"error":"Accounts are coming soon"}', TYPES['.json']);
+      return handleState(req, res);
+    }
     if (url === '/healthz') return send(res, 200, 'ok');
     return handleStatic(req, res);
   })
