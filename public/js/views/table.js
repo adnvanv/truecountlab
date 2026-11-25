@@ -56,9 +56,11 @@ export function mount(root, ctx, { training = false } = {}) {
         h('div', {}, h('strong', {}, 'Training table'), h('span', { class: 'muted' }, ' · practice chips, nothing logged · '), rulesText),
         h('button', { class: `btn sm cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat }, cheatCfg.cheat ? 'Cheat: ON' : 'Cheat: OFF', h('kbd', {}, 'X')))
       : h('div', { class: 'rules-line muted' }, rulesText),
-    hud, mhud, training ? cheatPanel : null,
+    mhud,
+    // Desktop: stats, cheat panel and the hand log live in a side column so the table fits one screen.
+    h('aside', { class: 'side' }, hud, training ? cheatPanel : null, fb),
     h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone),
-    h('div', { class: 'dock' }, fb, controls)));
+    h('div', { class: 'dock' }, controls)));
 
   // ---- helpers -----------------------------------------------------------
   const sess = () => (training ? practice : G.session);
@@ -175,15 +177,17 @@ export function mount(root, ctx, { training = false } = {}) {
     return el;
   }
 
-  // A stack of casino chips for an amount: $100 black, $25 green, $5 red, $1 white.
+  // A pile of casino chips seen from above, slightly offset like a real stack:
+  // $100 black, $25 green, $5 red, $1 white. The top chip shows its value.
   function chipStack(amount, { label = true } = {}) {
-    const discs = [];
+    const chips = [];
     let left = Math.floor(amount);
     for (const [d, c] of [[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']]) {
-      while (left >= d && discs.length < 10) { discs.push(c); left -= d; }
+      while (left >= d && chips.length < 8) { chips.push([d, c]); left -= d; }
     }
-    return h('div', { class: 'chip-stack', title: money(amount) },
-      h('div', { class: 'discs' }, discs.map((c, i) => h('i', { class: `chip-disc ${c}`, style: `--i:${i}` }))),
+    return h('div', { class: 'chip-pile', title: money(amount), style: `--n:${chips.length}` },
+      h('div', { class: 'pile' }, chips.map(([d, c], i) => h('i', { class: `pchip ${c}`, style: `--i:${i}` },
+        i === chips.length - 1 ? h('span', {}, String(d)) : null))),
       label ? h('span', { class: 'chip-amt' }, money(amount)) : null);
   }
 

@@ -12,7 +12,7 @@ import * as settings from './views/settings.js';
 import * as home from './views/home.js';
 import * as calculator from './views/calculator.js';
 import { h } from './ui.js';
-import { configure as configureSound } from './sfx.js';
+import { configure as configureSound, loadSamples } from './sfx.js';
 
 const VIEWS = [
   { id: 'home', label: 'Home', mount: home.mount },
@@ -33,6 +33,7 @@ const VIEWS = [
 
 const state = await store.init();
 configureSound(state.settings.sound);
+loadSamples();
 const ctx = {
   get settings() { return state.settings; },
   get stats() { return state.stats; },
@@ -84,7 +85,12 @@ const tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Sections' }, TABS.map(
   : h('a', { class: 'tab', 'data-tab': t.id, href: `#${t.id}` }, h('span', { class: 'tab-icon' }, t.icon), h('span', {}, t.label))));
 document.body.append(tabbar, sheet);
 const pageTitle = h('div', { class: 'page-title' });
-document.querySelector('.topbar').append(pageTitle);
+const topbar = document.querySelector('.topbar');
+topbar.append(pageTitle);
+// The table fills exactly the window under the top bar, so it needs the bar's real height.
+const syncTopbar = () => document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+new ResizeObserver(syncTopbar).observe(topbar);
+syncTopbar();
 
 let unmount = null;
 function route() {
