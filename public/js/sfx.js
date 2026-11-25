@@ -162,7 +162,7 @@ function chipSound(a, n, t = 0) {
 export const sampleStatus = () => ({ names: Object.keys(samples), clips: Object.values(samples).reduce((n, l) => n + l.length, 0) });
 
 // How long the shuffle lasts, so the dealer waits for it before dealing.
-export const shuffleMs = () => (samples.shuffle ? Math.round(samples.shuffle[0].duration * 1000) - 300 : 1500);
+export const shuffleMs = () => (samples.shuffle ? Math.round(samples.shuffle[0].duration * 1000) + 250 : 550);
 
 const chime = (a, notes, step, gain = 0.07) => notes.forEach((f, i) => tone(a, { t: i * step, f, dur: 0.3, type: 'triangle', gain }));
 
@@ -181,13 +181,11 @@ export const sfx = {
   tick: play((a) => noise(a, { dur: 0.035, type: 'highpass', f: 3500, gain: 0.18, attack: 0.001 }), 'tick', 0.55),
   // Dealer sweeps the last round's cards into the discard tray.
   collect: play(() => {}, 'collect', 0.7),
+  // One quick riffle.
   shuffle: play((a) => {
-    for (const start of [0.05, 0.85]) {
-      for (let i = 0; i < 30; i++) {
-        const t = start + i * (0.024 - i * 0.0003) + rand(0, 0.006);
-        noise(a, { t, dur: 0.018, type: 'bandpass', f: rand(2200, 4800), q: 2.2, gain: 0.28, attack: 0.001 });
-      }
-      noise(a, { t: start + 0.62, dur: 0.22, type: 'lowpass', f: 2400, f2: 500, gain: 0.18, attack: 0.04 });
+    for (let i = 0; i < 18; i++) {
+      const t = i * (0.017 - i * 0.0003) + rand(0, 0.004);
+      noise(a, { t, dur: 0.016, type: 'bandpass', f: rand(2200, 4800), q: 2.2, gain: 0.12 + i * 0.012, attack: 0.001 });
     }
   }, 'shuffle'),
   chip: play((a, n = 2) => chipSound(a, n)),

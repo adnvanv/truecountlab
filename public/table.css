@@ -399,3 +399,60 @@
   .table-view .felt { padding-bottom: 1rem; }
   .table-view .mhud { padding-top: calc(0.3rem + env(safe-area-inset-top)); padding-bottom: 0.3rem; }
 }
+
+/* ==== Hand log: high-contrast right / wrong ============================== */
+.table-view .fb-line {
+  display: flex; align-items: flex-start; gap: 0.55rem; padding: 0.45rem 0.6rem; line-height: 1.35;
+  border-radius: 10px; border-left: 5px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: var(--ink);
+}
+.table-view .fb-line .fb-icon {
+  flex: none; width: 1.55rem; height: 1.55rem; margin-top: -0.05rem; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 900; font-size: 0.95rem;
+}
+.table-view .fb-line .fb-text { min-width: 0; }
+.table-view .fb-line .fb-tag {
+  display: inline-block; margin-right: 0.45rem; padding: 0 0.4rem; border-radius: 4px;
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; vertical-align: 0.08em;
+}
+.table-view .fb-line.good { background: #0d3f24; border-left-color: #3ee07f; color: #eafff2; }
+.table-view .fb-line.good .fb-icon, .table-view .fb-line.good .fb-tag { background: #3ee07f; color: #03210f; }
+.table-view .fb-line.bad { background: #551411; border-left-color: #ff4d40; color: #fff1ef; }
+.table-view .fb-line.bad .fb-icon, .table-view .fb-line.bad .fb-tag { background: #ff4d40; color: #2a0503; }
+.table-view .fb-line.warn { background: #3f2f06; border-left-color: #ffc13d; color: #fff7e0; }
+.table-view .fb-line.warn .fb-icon, .table-view .fb-line.warn .fb-tag { background: #ffc13d; color: #2a1c00; }
+.table-view .fb-line.info { background: rgba(132, 200, 255, 0.08); border-left-color: rgba(132, 200, 255, 0.5); color: #c6e6ff; }
+.table-view .fb-line.play { font-weight: 600; font-size: 1em; }
+.table-view .fb-line.bet { font-size: 0.88em; }
+.table-view .fb-line.latest { animation: fbIn 0.3s ease-out both; }
+.table-view .fb-line.bad.latest { animation: fbIn 0.3s ease-out both, fbShake 0.35s 0.25s; box-shadow: 0 0 0 2px #ff4d40, 0 0 18px rgba(255, 77, 64, 0.45); }
+.table-view .fb-line.good.play.latest { box-shadow: 0 0 0 2px #3ee07f; }
+@keyframes fbIn { from { transform: translateX(-10px); opacity: 0; } }
+@keyframes fbShake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .table-view .fb-line.latest, .table-view .fb-line.bad.latest { animation: none; } }
+
+@media (max-width: 640px) {
+  /* Phones: the last two lines, so your play's verdict isn't replaced by the round result. */
+  .table-view .feedback { display: flex; flex-direction: column; gap: 0.25rem; }
+  .table-view .feedback .fb-line { display: none; padding: 0.3rem 0.5rem; font-size: 0.82rem; }
+  .table-view .feedback .fb-line:nth-last-child(-n + 2) { display: flex; }
+  .table-view .feedback .fb-line .fb-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .table-view .feedback .fb-line .fb-icon { width: 1.3rem; height: 1.3rem; font-size: 0.8rem; }
+  .table-view .feedback.expanded .fb-line { display: flex; }
+  .table-view .feedback.expanded .fb-line .fb-text { white-space: normal; }
+}
+@media (max-width: 640px) {
+  /* Leave room for the two-line log strip under the felt. */
+  .table-view { --cw-dealer: min(14cqh, 74px); --cw-me: min(17cqh, 92px); }
+  .table-view .felt { padding-bottom: 1.1rem; }
+}
+@media (max-width: 640px) {
+  /* Up to two other players sit beside you (one each side), like a real table;
+     bigger tables keep them in a row above you. */
+  .table-view .seats.o0, .table-view .seats.o1, .table-view .seats.o2 {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "l me r"; align-items: end;
+  }
+  .table-view .seats.o0, .table-view .seats.o1, .table-view .seats.o2 { --cw-me: min(19cqh, 92px); }
+  .table-view .seats.o1 .others.left, .table-view .seats.o2 .others.left { justify-content: flex-start; padding-bottom: 2.2rem; }
+  .table-view .seats.o1 .others.right, .table-view .seats.o2 .others.right { justify-content: flex-end; padding-bottom: 2.2rem; }
+  .table-view { --cw-dealer: min(15cqh, 74px); }
+}

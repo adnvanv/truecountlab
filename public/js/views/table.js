@@ -107,7 +107,16 @@ export function mount(root, ctx, { training = false } = {}) {
   function note(msg, kind = '') {
     notes.push({ msg, kind });
     if (notes.length > 6) notes.shift();
-    fb.replaceChildren(...notes.map((n) => h('div', { class: `fb-line ${n.kind}` }, n.msg)));
+    fb.replaceChildren(...notes.map((n, i) => {
+      // Lines starting with ✓/✗ get a big icon and a CORRECT/WRONG tag so a misplay jumps out.
+      const m = n.msg.match(/^([✓✗])\s*([\s\S]*)$/);
+      const latest = i === notes.length - 1 ? ' latest' : '';
+      if (!m) return h('div', { class: `fb-line ${n.kind}${latest}` }, n.msg);
+      const tag = n.kind.includes('play') ? (m[1] === '✓' ? 'Correct' : 'Wrong') : n.kind.includes('bet') ? (m[1] === '✓' ? 'Bet OK' : 'Bet off') : '';
+      return h('div', { class: `fb-line ${n.kind}${latest}` },
+        h('span', { class: 'fb-icon', 'aria-hidden': 'true' }, m[1]),
+        h('span', { class: 'fb-text' }, tag ? h('b', { class: 'fb-tag' }, tag) : null, m[2]));
+    }));
   }
 
   function optsFor(hd) {
@@ -253,6 +262,7 @@ export function mount(root, ctx, { training = false } = {}) {
       h('div', { class: 'zone-label you' }, 'You'));
     // Other players sit on both sides of you, like a real table.
     const half = Math.ceil(otherSeats.length / 2);
+    seatsZone.className = `zone seats o${Math.min(others.length || S.others, 5)}`;
     seatsZone.replaceChildren(h('div', { class: 'others left' }, otherSeats.slice(0, half)), mine, h('div', { class: 'others right' }, otherSeats.slice(half)));
   }
 
@@ -370,7 +380,7 @@ export function mount(root, ctx, { training = false } = {}) {
     const want = betFor(tc());
     const betOk = bet === want;
     count('bets', betOk);
-    note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at TC ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good' : 'warn');
+    note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at TC ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good bet' : 'warn bet');
 
     if (dealer.length) sfx.collect(); // sweep last round's cards
     sfx.chip(2);
@@ -575,10 +585,10 @@ export function mount(root, ctx, { training = false } = {}) {
     const label = `${handLabel(hd.cards)} vs ${upLabel(up)}`;
     count('decisions', ok);
     if (devRes) count('devs', ok);
-    if (ok) note(`✓ ${ACTIONS[a]} on ${label}${devRes ? ` — ${devRes.note}` : ''}`, 'good');
+    if (ok) note(`✓ ${ACTIONS[a]} on ${label}${devRes ? ` — ${devRes.note}` : ''}`, 'good play');
     else {
       sfx.wrong();
-      note(`✗ ${ACTIONS[a]} on ${label}. Correct: ${ACTIONS[main.action]}${main.dev ? ` — ${main.note} (TC ${signed(tc())})` : ' (basic strategy)'}`, 'bad');
+      note(`✗ ${ACTIONS[a]} on ${label}. Correct: ${ACTIONS[main.action]}${main.dev ? ` — ${main.note} (TC ${signed(tc())})` : ' (basic strategy)'}`, 'bad play');
       T.misses[label] = (T.misses[label] || 0) + 1;
     }
   }
@@ -588,7 +598,7 @@ export function mount(root, ctx, { training = false } = {}) {
     const ok = answers.has(take);
     count('decisions', ok);
     count('devs', ok);
-    note(`${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance — take it at TC ≥ +3 (TC now ${signed(tc())}).`, ok ? 'good' : 'bad');
+    note(`${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance — take it at TC ≥ +3 (TC now ${signed(tc())}).`, ok ? 'good play' : 'bad play');
     if (!ok) T.misses.Insurance = (T.misses.Insurance || 0) + 1;
   }
 
