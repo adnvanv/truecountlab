@@ -459,3 +459,9 @@
   .table-view .seats.o1 .others.right, .table-view .seats.o2 .others.right { justify-content: flex-end; padding-bottom: 2.2rem; }
   .table-view { --cw-dealer: min(15cqh, 74px); }
 }
+
+/* Round results: muted red/green so your decisions stay the loudest lines. */
+.table-view .fb-line.round { font-size: 0.85em; font-weight: 500; padding-top: 0.3rem; padding-bottom: 0.3rem; animation: none; box-shadow: none; }
+.table-view .fb-line.round.won { background: rgba(62, 224, 127, 0.07); border-left-color: rgba(62, 224, 127, 0.35); color: rgba(170, 230, 192, 0.8); }
+.table-view .fb-line.round.lost { background: rgba(255, 77, 64, 0.07); border-left-color: rgba(255, 77, 64, 0.35); color: rgba(240, 175, 168, 0.8); }
+.table-view .fb-line.round.even { background: rgba(255, 255, 255, 0.04); border-left-color: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }

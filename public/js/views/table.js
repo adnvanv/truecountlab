@@ -524,7 +524,7 @@ export function mount(root, ctx, { training = false } = {}) {
     T.hands++;
     sess().hands++;
     touch();
-    note(`Round: ${money(net, { sign: true })}`, net > 0 ? 'good' : net < 0 ? 'bad' : '');
+    note(`Round: ${money(net, { sign: true })}`, `round ${net > 0 ? 'won' : net < 0 ? 'lost' : 'even'}`);
     if (hands.some((x) => x.result.text === 'Blackjack!')) sfx.blackjack();
     else if (net > 0) sfx.win();
     else if (net < 0 && hands.every((x) => x.result.text === 'Bust')) sfx.bust();
