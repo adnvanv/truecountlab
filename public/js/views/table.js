@@ -252,7 +252,6 @@ export function mount(root, ctx, { training = false } = {}) {
       },
       hd.result ? h('div', { class: 'result-bubble' }, hd.result.text) : null,
       h('div', { class: 'hand' }, hd.cards.map((c) => cardView(c))),
-      h('div', { class: 'hand-meta' }, badge(hd.cards)),
       h('div', { class: 'bet-spot' }, chipStack(hd.bet))))
       : [h('div', { class: 'my-hand empty' },
         h('div', { class: 'hand' }, h('div', { class: 'slot' }), h('div', { class: 'slot' })),
