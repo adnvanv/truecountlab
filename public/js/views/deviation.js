@@ -3,6 +3,7 @@ import { h, cardEl, signed, secs, head, field, select, toggle, typingInField, pc
 import { randInt, pick, makeCard, cardForValue, TENS } from '../cards.js';
 import { activeDevs, basicStrategy, correctAction, insuranceCorrect, devNote, ACTIONS, DEV_GROUPS, handLabel } from '../strategy.js';
 import { addRun } from '../store.js';
+import { sfx } from '../sfx.js';
 
 export const DEV_ERRORS = {
   missed: 'Picked basic strategy when the deviation applied',
@@ -97,6 +98,7 @@ export function mount(root, ctx) {
       basic = basicStrategy(sc.cards, sc.up, o).action;
     }
     const ok = a === want;
+    if (ok) sfx.right(); else sfx.wrong();
     // The deviation play is whichever side differs from basic (for low-count hits, that's the hit).
     const devPlay = d.at !== basic ? d.at : d.below;
     const picked = a === basic ? 'basic' : a === devPlay ? 'deviation' : 'wrong';

@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
   countCheck: 'random',
   showCount: false,
   surrender: false,
+  sound: { on: true, volume: 0.6 },
   countdown: { auto: true, ms: 500, range: '15-20' },
   distraction: { auto: true, ms: 600, range: '15-20', audio: true, voice: true, popups: true, chatter: true, volume: 0.5 },
   tcDrill: { display: 'tray' },

@@ -1,6 +1,7 @@
 // Full table simulation (mode 7) with sessions: $500 buy-in, stop-loss at the buy-in.
 import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct } from '../ui.js';
 import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
+import { sfx, configure } from '../sfx.js';
 import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS } from '../strategy.js';
 
 const ABORT = Symbol('abort');
@@ -30,21 +31,34 @@ export function mount(root, ctx, { training = false } = {}) {
   let reveal = S.showCount;
   let notes = [];
   let lastActivity = Date.now();
+  let shoeFresh = true; // play the shuffle before the first deal of each shoe
+  configure(S.sound);
 
-  const hud = h('div', { class: 'hud' });
+  const hud = h('div', { class: 'hud' }); // desktop stats strip
+  const mhud = h('div', { class: 'mhud' }); // phone header
   const dealerZone = h('div', { class: 'zone dealer-zone' });
   const seatsZone = h('div', { class: 'zone seats' });
-  const fb = h('div', { class: 'feedback', 'aria-live': 'polite' });
+  const fb = h('div', { class: 'feedback', 'aria-live': 'polite', onclick: () => fb.classList.toggle('expanded') });
   const controls = h('div', { class: 'controls' });
   const cheatPanel = h('div', { class: 'cheat-panel', 'aria-live': 'polite' });
+  const trayBox = h('div', { class: 'felt-tray' });
+  const shoeEl = h('div', { class: 'felt-shoe', 'aria-hidden': 'true' }, h('div', { class: 'shoe-body' }, h('div', { class: 'shoe-card' })), h('span', { class: 'felt-tag' }, 'Shoe'));
   const rulesText = S.surrender ? RULES.text.replace('no surrender', 'late surrender (count-based)') : RULES.text;
+  const arcId = `arc-${training ? 't' : 'r'}`;
+  const arc = h('svg:svg', { class: 'felt-arc', viewBox: '0 0 600 110', 'aria-hidden': 'true' },
+    h('svg:path', { id: arcId, d: 'M 30 18 Q 300 150 570 18', fill: 'none' }),
+    h('svg:path', { id: `${arcId}b`, d: 'M 70 42 Q 300 160 530 42', fill: 'none' }),
+    h('svg:text', { class: 'arc-big' }, h('svg:textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' }, 'BLACKJACK PAYS 3 TO 2')),
+    h('svg:text', { class: 'arc-small' }, h('svg:textPath', { href: `#${arcId}b`, startOffset: '50%', 'text-anchor': 'middle' }, 'Dealer stands on all 17s · Insurance pays 2 to 1')));
   root.append(h('section', { class: `view table-view${training ? ' training' : ''}` },
     training
       ? h('div', { class: 'training-bar' },
         h('div', {}, h('strong', {}, 'Training table'), h('span', { class: 'muted' }, ' · practice chips, nothing logged · '), rulesText),
         h('button', { class: `btn sm cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat }, cheatCfg.cheat ? 'Cheat: ON' : 'Cheat: OFF', h('kbd', {}, 'X')))
       : h('div', { class: 'rules-line muted' }, rulesText),
-    hud, training ? cheatPanel : null, h('div', { class: 'felt' }, dealerZone, seatsZone), fb, controls));
+    hud, mhud, training ? cheatPanel : null,
+    h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone),
+    h('div', { class: 'dock' }, fb, controls)));
 
   // ---- helpers -----------------------------------------------------------
   const sess = () => (training ? practice : G.session);
@@ -74,9 +88,10 @@ export function mount(root, ctx, { training = false } = {}) {
   }
 
   function draw(faceDown = false) {
-    if (shoe.remaining === 0) { shoe.shuffle(); rc = 0; note('Shoe ran out mid-round — reshuffled, count reset.', 'warn'); }
+    if (shoe.remaining === 0) { shoe.shuffle(); rc = 0; sfx.shuffle(); note('Shoe ran out mid-round — reshuffled, count reset.', 'warn'); }
     const c = shoe.draw();
     c.anim = true;
+    sfx.deal();
     if (faceDown) c.down = true; else rc += hiLo(c);
     return c;
   }
@@ -148,14 +163,43 @@ export function mount(root, ctx, { training = false } = {}) {
     if (cards.length === 2 && vis.length === 2 && total === 21) return 'BJ';
     return soft && total < 21 ? `${total - 10}/${total}` : String(total);
   }
-  const badge = (cards) => (cards.length ? h('span', { class: 'badge' }, totalText(cards)) : null);
+  function badge(cards) {
+    if (!cards.length) return null;
+    const t = totalText(cards);
+    return h('span', { class: `badge${t === 'Bust' ? ' bust' : t === 'BJ' ? ' bj' : ''}` }, t);
+  }
+
+  function cardView(c, opts = {}) {
+    const el = cardEl(c, { down: c.down, anim: takeAnim(c), ...opts });
+    if (c.flip) { c.flip = false; el.classList.add('flip'); }
+    return el;
+  }
+
+  // A stack of casino chips for an amount: $100 black, $25 green, $5 red, $1 white.
+  function chipStack(amount, { label = true } = {}) {
+    const discs = [];
+    let left = Math.floor(amount);
+    for (const [d, c] of [[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']]) {
+      while (left >= d && discs.length < 10) { discs.push(c); left -= d; }
+    }
+    return h('div', { class: 'chip-stack', title: money(amount) },
+      h('div', { class: 'discs' }, discs.map((c, i) => h('i', { class: `chip-disc ${c}`, style: `--i:${i}` }))),
+      label ? h('span', { class: 'chip-amt' }, money(amount)) : null);
+  }
+
+  function soundBtn(cls) {
+    const label = S.sound.on ? 'Mute sounds' : 'Turn sounds on';
+    return h('button', {
+      class: `${cls} sound-btn`, title: label, 'aria-label': label,
+      onclick: () => { S.sound.on = !S.sound.on; configure(S.sound); ctx.save(); if (S.sound.on) sfx.chip(1); render(); },
+    }, S.sound.on ? '🔊' : '🔇');
+  }
 
   // ---- rendering ---------------------------------------------------------
   function renderHud() {
     const stat = (k, v) => h('div', { class: 'stat' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v));
     const s = sess();
     hud.replaceChildren(
-      h('div', { class: 'hud-tray' }, trayEl(shoe.dealt, RULES.decks), h('span', { class: 'k' }, 'Discards')),
       h('div', { class: 'hud-info' },
         training ? stat('Practice chips', `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})`)
           : stat('Session stack', s ? `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})` : '—'),
@@ -165,27 +209,47 @@ export function mount(root, ctx, { training = false } = {}) {
           h('span', { class: 'k' }, 'Count'),
           h('div', { class: 'count-row' },
             reveal ? h('span', { class: 'v mono' }, `RC ${signed(rc)} · TC ${signed(tc())}`) : h('span', { class: 'v muted' }, 'Hidden'),
-            h('button', { class: 'btn sm ghost', onclick: toggleReveal, title: 'Show or hide the count (C)' }, reveal ? 'Hide' : 'Reveal', h('kbd', {}, 'C'))))));
+            h('button', { class: 'btn sm ghost', onclick: toggleReveal, title: 'Show or hide the count (C)' }, reveal ? 'Hide' : 'Reveal', h('kbd', {}, 'C'))))),
+      soundBtn('btn ghost'));
+
+    // Phone header: stack, count pill, sound, cheat.
+    const showCount = reveal || (training && cheatCfg.cheat);
+    mhud.replaceChildren(
+      h('div', { class: 'm-stack' }, h('span', { class: 'k' }, training ? 'Chips' : s ? 'Stack' : 'Bankroll'),
+        h('span', { class: 'v' }, s ? money(s.stack) : money(G.bankroll)),
+        s ? h('span', { class: `m-delta ${s.stack >= s.buyIn ? 'good' : 'bad'}` }, money(s.stack - s.buyIn, { sign: true })) : null),
+      h('button', { class: `m-count${showCount ? ' on' : ''}`, onclick: toggleReveal, 'aria-label': 'Show or hide the count' },
+        showCount ? h('span', { class: 'mono' }, `RC ${signed(rc)} · TC ${signed(tc())}`) : h('span', {}, 'Count ••• ', h('small', {}, 'tap'))),
+      soundBtn('m-icon'),
+      training ? h('button', { class: `m-icon cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat, 'aria-label': 'Toggle cheat panel' }, cheatCfg.cheat ? '👁' : '🙈') : null);
   }
 
   function renderTable() {
+    trayBox.replaceChildren(trayEl(shoe.dealt, RULES.decks), h('span', { class: 'felt-tag' }, 'Discards'));
+    shoeEl.style.setProperty('--left', String(shoe.remaining / (RULES.decks * 52)));
     dealerZone.replaceChildren(
       h('div', { class: 'zone-label' }, 'Dealer', badge(dealer)),
-      h('div', { class: 'hand' }, dealer.length ? dealer.map((c) => cardEl(c, { down: c.down, anim: takeAnim(c) })) : h('div', { class: 'slot' })));
+      h('div', { class: 'hand' }, dealer.length ? dealer.map((c) => cardView(c)) : [h('div', { class: 'slot' }), h('div', { class: 'slot' })]));
     const otherSeats = others.map((o, i) => h('div', { class: 'seat other' },
-      h('div', { class: 'zone-label' }, `Player ${i + 1}`, badge(o.cards)),
-      h('div', { class: 'hand' }, o.cards.map((c) => cardEl(c, { size: 'sm', anim: takeAnim(c) })))));
+      h('div', { class: 'hand' }, o.cards.map((c) => cardView(c, { size: 'sm' }))),
+      h('div', { class: 'zone-label' }, `P${i + 1}`, badge(o.cards))));
+    const handEls = hands.length
+      ? hands.map((hd, i) => h('div', {
+        class: `my-hand${phase === 'play' && i === active ? ' active' : ''}${hd.result ? ` ${hd.result.cls}` : ''}`,
+      },
+      hd.result ? h('div', { class: 'result-bubble' }, hd.result.text) : null,
+      h('div', { class: 'hand' }, hd.cards.map((c) => cardView(c))),
+      h('div', { class: 'hand-meta' }, badge(hd.cards)),
+      h('div', { class: 'bet-spot' }, chipStack(hd.bet))))
+      : [h('div', { class: 'my-hand empty' },
+        h('div', { class: 'hand' }, h('div', { class: 'slot' }), h('div', { class: 'slot' })),
+        h('div', { class: 'bet-spot' }, sess() ? chipStack(bet) : h('span', { class: 'muted' }, 'Buy in')))];
     const mine = h('div', { class: 'seat me' },
-      h('div', { class: 'zone-label' }, 'You'),
-      hands.length
-        ? h('div', { class: 'my-hands' }, hands.map((hd, i) => h('div', {
-          class: `my-hand${phase === 'play' && i === active ? ' active' : ''}${hd.result ? ` ${hd.result.cls}` : ''}`,
-        },
-        h('div', { class: 'hand' }, hd.cards.map((c) => cardEl(c, { anim: takeAnim(c) }))),
-        h('div', { class: 'hand-meta' }, badge(hd.cards), h('span', { class: 'chip' }, money(hd.bet)),
-          hd.result ? h('span', { class: 'result' }, hd.result.text) : null))))
-        : h('div', { class: 'placeholder' }, sess() ? 'Place your bet and deal.' : 'Start a session to play.'));
-    seatsZone.replaceChildren(...otherSeats, mine);
+      h('div', { class: `my-hands n${Math.max(1, hands.length)}` }, handEls),
+      h('div', { class: 'zone-label you' }, 'You'));
+    // Other players sit on both sides of you, like a real table.
+    const half = Math.ceil(otherSeats.length / 2);
+    seatsZone.replaceChildren(h('div', { class: 'others left' }, otherSeats.slice(0, half)), mine, h('div', { class: 'others right' }, otherSeats.slice(half)));
   }
 
   function renderControls() {
@@ -195,23 +259,27 @@ export function mount(root, ctx, { training = false } = {}) {
       controls.replaceChildren(h('div', { class: 'session-start' },
         h('div', {}, `Bankroll ${money(G.bankroll)}. Each session buys in for ${money(RULES.buyIn)}; it ends at the stop-loss (the whole buy-in lost) or when you cash out.`),
         can
-          ? h('button', { class: 'btn primary deal', onclick: startSession }, `Buy in ${money(RULES.buyIn)}`, h('kbd', {}, 'Enter'))
+          ? h('button', { class: 'btn primary deal', onclick: () => { sfx.chip(4); startSession(); } }, `Buy in ${money(RULES.buyIn)}`, h('kbd', {}, 'Enter'))
           : h('div', { class: 'row' }, h('span', { class: 'bad' }, 'Bankroll can’t cover a buy-in.'),
             h('button', { class: 'btn', onclick: resetBankroll }, `Reset bankroll to ${money(RULES.bankroll)}`))));
       return;
     }
     if (phase === 'bet') {
+      const chipColors = ['green', 'orange', 'purple'];
       controls.replaceChildren(
         h('div', { class: 'bet-row' },
-          h('div', { class: 'bet-quick' }, BETS.map((b, i) => h('button', { class: `btn chip-btn${bet === b ? ' on' : ''}`, onclick: () => { setBet(b); render(); }, disabled: b > stack() }, money(b), h('kbd', {}, String(i + 1))))),
+          h('div', { class: 'bet-quick' }, BETS.map((b, i) => h('button', {
+            class: `chip-btn ${chipColors[i]}${bet === b ? ' on' : ''}`, disabled: b > stack(), 'aria-label': `Bet ${money(b)}`,
+            onclick: () => { setBet(b); sfx.chip(i + 1); render(); },
+          }, h('span', { class: 'chip-face' }, String(b)), h('kbd', {}, String(i + 1))))),
           h('div', { class: 'bet-adjust' },
-            h('button', { class: 'btn round', onclick: () => { setBet(bet - MIN); render(); }, 'aria-label': 'Lower bet' }, '−'),
+            h('button', { class: 'btn round', onclick: () => { setBet(bet - MIN); sfx.chip(1); render(); }, 'aria-label': 'Lower bet' }, '−'),
             h('div', { class: 'bet-amt' }, h('div', { class: 'v' }, money(bet)), h('div', { class: 'k' }, 'bet')),
-            h('button', { class: 'btn round', onclick: () => { setBet(bet + MIN); render(); }, 'aria-label': 'Raise bet' }, '+')),
+            h('button', { class: 'btn round', onclick: () => { setBet(bet + MIN); sfx.chip(1); render(); }, 'aria-label': 'Raise bet' }, '+')),
           h('button', { class: 'btn primary deal', onclick: () => run(deal), disabled: bet > stack() }, 'Deal', h('kbd', {}, 'Space'))),
         h('div', { class: 'bet-sub' },
           training
-            ? h('button', { class: 'btn sm', onclick: () => { practice.stack = PRACTICE; practice.buyIn = PRACTICE; render(); } }, 'Reset chips')
+            ? h('button', { class: 'btn sm', onclick: () => { practice.stack = PRACTICE; practice.buyIn = PRACTICE; sfx.chip(5); render(); } }, 'Reset chips')
             : h('button', { class: 'btn sm', onclick: () => endSession('Cashed out') }, `Cash out ${money(stack())}`),
           h('button', { class: 'link', onclick: newShoe }, 'Shuffle new shoe'),
           h('span', { class: 'muted hide-sm' }, '1/2/3 or ↑/↓ set the bet')));
@@ -220,16 +288,18 @@ export function mount(root, ctx, { training = false } = {}) {
     const hint = training && cheatCfg.cheat ? cheatAdvice().key : null;
     if (phase === 'insurance') {
       controls.replaceChildren(h('div', { class: 'ins-row' },
-        h('span', {}, 'Dealer shows an Ace. Insurance?'),
-        h('button', { class: `btn${hint === 'Y' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(true) }, 'Yes', h('kbd', {}, 'Y')),
-        h('button', { class: `btn${hint === 'N' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(false) }, 'No', h('kbd', {}, 'N'))));
+        h('span', { class: 'ins-q' }, 'Dealer shows an Ace. Insurance?'),
+        h('div', { class: 'ins-btns' },
+          h('button', { class: `btn act${hint === 'Y' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(true) }, 'Yes', h('kbd', {}, 'Y')),
+          h('button', { class: `btn act${hint === 'N' ? ' hint' : ''}`, onclick: () => pendingInsurance?.(false) }, 'No', h('kbd', {}, 'N')))));
       return;
     }
     const hd = hands[active];
     const o = phase === 'play' && hd ? optsFor(hd) : null;
-    controls.replaceChildren(h('div', { class: `actions ${ACTS.length > 4 ? 'five' : 'four'}` }, ACTS.map((a) => h('button', {
+    const icons = { H: '＋', S: '✋', D: '×2', P: '⇆', R: '⚑' };
+    controls.replaceChildren(h('div', { class: `actions table-acts ${ACTS.length > 4 ? 'five' : 'four'}` }, ACTS.map((a) => h('button', {
       class: `btn act act-${a}${o && !busy && hint === a ? ' hint' : ''}`, disabled: !o || busy || !allowed(a, o), onclick: () => run(() => act(a)),
-    }, h('span', {}, ACTIONS[a]), h('kbd', {}, a)))));
+    }, h('span', { class: 'act-icon', 'aria-hidden': 'true' }, icons[a]), h('span', { class: 'act-label' }, ACTIONS[a]), h('kbd', {}, a)))));
   }
 
   function render() {
@@ -298,6 +368,13 @@ export function mount(root, ctx, { training = false } = {}) {
     count('bets', betOk);
     note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at TC ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good' : 'warn');
 
+    sfx.chip(2);
+    if (shoeFresh) {
+      shoeFresh = false;
+      note('Shuffling…', 'info');
+      sfx.shuffle();
+      await step(1500);
+    }
     sess().stack -= bet;
     insuranceBet = 0;
     hands = [{ cards: [], bet }];
@@ -321,7 +398,7 @@ export function mount(root, ctx, { training = false } = {}) {
       busy = true;
       phase = 'dealing';
       gradeInsurance(take);
-      if (take) { insuranceBet = Math.min(bet / 2, stack()); sess().stack -= insuranceBet; }
+      if (take) { insuranceBet = Math.min(bet / 2, stack()); sess().stack -= insuranceBet; sfx.chip(1); }
     }
 
     if ((up === 11 || up === 10) && isBlackjack(dealer)) {
@@ -382,6 +459,7 @@ export function mount(root, ctx, { training = false } = {}) {
       hd.surrendered = true;
       hd.done = true;
     } else if (a === 'D') {
+      sfx.chip(2);
       sess().stack -= hd.bet;
       hd.bet *= 2;
       hd.cards.push(draw());
@@ -391,6 +469,7 @@ export function mount(root, ctx, { training = false } = {}) {
       const moved = hd.cards.pop();
       const nh = { cards: [moved], bet: hd.bet, fromSplit: true };
       hd.fromSplit = true;
+      sfx.chip(2);
       sess().stack -= hd.bet;
       hands.splice(active + 1, 0, nh);
       const aces = rankKey(moved.rank) === 'A';
@@ -406,7 +485,7 @@ export function mount(root, ctx, { training = false } = {}) {
 
   function revealHole() {
     const hole = dealer.find((c) => c.down);
-    if (hole) { hole.down = false; hole.anim = true; rc += hiLo(hole); }
+    if (hole) { hole.down = false; hole.flip = true; rc += hiLo(hole); sfx.flip(); }
   }
 
   async function dealerPlay() {
@@ -446,6 +525,11 @@ export function mount(root, ctx, { training = false } = {}) {
     sess().hands++;
     touch();
     note(`Round: ${money(net, { sign: true })}`, net > 0 ? 'good' : net < 0 ? 'bad' : '');
+    if (hands.some((x) => x.result.text === 'Blackjack!')) sfx.blackjack();
+    else if (net > 0) sfx.win();
+    else if (net < 0 && hands.every((x) => x.result.text === 'Bust')) sfx.bust();
+    else if (net < 0) sfx.lose();
+    else sfx.push();
     hands.forEach((x) => { x.done = true; });
     busy = false;
     render();
@@ -457,7 +541,8 @@ export function mount(root, ctx, { training = false } = {}) {
     if (shoe.pastCut) {
       shoe.shuffle();
       rc = 0;
-      note('Cut card reached (75%) — fresh shoe, count back to 0.', 'info');
+      shoeFresh = true;
+      note('Cut card reached (75%) — the dealer shuffles before the next hand. Count back to 0.', 'info');
     }
     phase = 'bet';
     if (training && stack() < MIN) {
@@ -487,6 +572,7 @@ export function mount(root, ctx, { training = false } = {}) {
     if (devRes) count('devs', ok);
     if (ok) note(`✓ ${ACTIONS[a]} on ${label}${devRes ? ` — ${devRes.note}` : ''}`, 'good');
     else {
+      sfx.wrong();
       note(`✗ ${ACTIONS[a]} on ${label}. Correct: ${ACTIONS[main.action]}${main.dev ? ` — ${main.note} (TC ${signed(tc())})` : ' (basic strategy)'}`, 'bad');
       T.misses[label] = (T.misses[label] || 0) + 1;
     }
@@ -519,6 +605,7 @@ export function mount(root, ctx, { training = false } = {}) {
           const cands = tcCandidates(rc, shoe.remaining);
           const tcOk = cands.includes(tcF.value);
           count('checks', rcOk && tcOk);
+          if (rcOk && tcOk) sfx.right(); else sfx.wrong();
           const est = decksEstimate(shoe.remaining);
           result.replaceChildren(
             h('div', { class: rcOk ? 'good' : 'bad' }, `${rcOk ? '✓' : '✗'} Running count ${signed(rc)}${rcOk ? '' : ` (you said ${rcF.value == null ? '—' : signed(rcF.value)})`}`),
@@ -547,6 +634,8 @@ export function mount(root, ctx, { training = false } = {}) {
     if (phase !== 'bet') return;
     shoe.shuffle();
     rc = 0;
+    shoeFresh = false;
+    sfx.shuffle();
     hands = []; dealer = []; others = [];
     notes = [];
     note('New shoe. Count starts at 0.', 'info');
@@ -564,7 +653,7 @@ export function mount(root, ctx, { training = false } = {}) {
       if (k === ' ' || k === 'enter') { e.preventDefault(); run(deal); }
       else if (k === 'arrowup') { e.preventDefault(); setBet(bet + MIN); render(); }
       else if (k === 'arrowdown') { e.preventDefault(); setBet(bet - MIN); render(); }
-      else if (['1', '2', '3'].includes(k)) { setBet(BETS[Number(k) - 1]); render(); }
+      else if (['1', '2', '3'].includes(k)) { setBet(BETS[Number(k) - 1]); sfx.chip(Number(k)); render(); }
     } else if (phase === 'insurance' && (k === 'y' || k === 'n')) {
       pendingInsurance?.(k === 'y');
     } else if (phase === 'play' && k.length === 1 && 'hsdpr'.includes(k)) {

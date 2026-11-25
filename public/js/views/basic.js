@@ -3,6 +3,7 @@ import { h, cardEl, head, field, select, toggle, typingInField, secs } from '../
 import { randInt, pick, makeCard, cardForValue, TENS } from '../cards.js';
 import { basicStrategy, cellOf, cellKey, handLabel, upLabel, UPCARDS, ACTIONS, CODE_TEXT, HARD, SOFT, PAIRS } from '../strategy.js';
 import { addRun } from '../store.js';
+import { sfx } from '../sfx.js';
 
 const HARD_ROWS = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17'];
 const SOFT_ROWS = ['13', '14', '15', '16', '17', '18', '19', '20'];
@@ -118,6 +119,7 @@ export function mount(root, ctx) {
     const o = { canDouble: true, canSplit: true };
     const b = basicStrategy(sc.cards, sc.up, o);
     const ok = a === b.action;
+    if (ok) sfx.right(); else sfx.wrong();
     const cell = cellOf(sc.cards, sc.up);
     const key = cellKey(cell);
     const d = (st.cells[key] ||= { n: 0, miss: 0 });

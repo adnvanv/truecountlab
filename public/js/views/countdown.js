@@ -2,6 +2,7 @@
 import { h, cardEl, sleep, signed, secs, numberField, head, field, select, toggle, typingInField } from '../ui.js';
 import { hiLo, makeDecks, shuffleInPlace, randInt, pick } from '../cards.js';
 import { addRun } from '../store.js';
+import { sfx } from '../sfx.js';
 import { createAmbience } from '../audio.js';
 
 // Goal pace: a full deck in under 30s, i.e. about 0.58s per card.
@@ -120,6 +121,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
   function show() {
     const group = cards.slice(i, i + 1);
     stage.replaceChildren(h('div', { class: 'flash' }, group.map((c) => cardEl(c, { size: 'lg' }))));
+    sfx.tick();
     prog.textContent = `${Math.min(i + 1, cards.length)} / ${cards.length}`;
   }
 
@@ -225,6 +227,7 @@ export function mount(root, ctx, { distraction = false } = {}) {
     const ok = guess === expected;
     const perCard = elapsed / cards.length;
     const goalMet = ok && perCard <= GOAL_PER_CARD;
+    if (goalMet) sfx.win(); else if (ok) sfx.right(); else sfx.wrong();
     addRun(st, {
       ms: Math.round(elapsed), ok, goal: goalMet, n: cards.length, exp: expected, diff: guess - expected, auto: cfg.auto, speed: cfg.auto ? cfg.ms : null,
       ...(distraction ? { popups: popStats.shown, popupsOk: popStats.ok } : {}),

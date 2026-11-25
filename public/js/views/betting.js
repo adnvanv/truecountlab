@@ -2,6 +2,7 @@
 import { h, signed, secs, head, field, select, trayEl, typingInField, money, pct } from '../ui.js';
 import { RULES, BETS, betFor, randInt, decksEstimate, trueCount } from '../cards.js';
 import { addRun } from '../store.js';
+import { sfx } from '../sfx.js';
 
 export function mount(root, ctx) {
   const cfg = ctx.settings.betDrill;
@@ -48,6 +49,7 @@ export function mount(root, ctx) {
     answered = true;
     const want = betFor(prob.tc);
     const ok = bet === want;
+    if (ok) sfx.chip(BETS.indexOf(bet) + 1); else sfx.wrong();
     const ms = performance.now() - prob.t;
     const err = ok ? null : bet < want ? 'under' : 'over';
     addRun(st, { ok, ms: Math.round(ms), tc: prob.tc, want, chose: bet, err });

@@ -2,6 +2,7 @@
 import { h, signed, secs, numberField, head, field, select, trayEl, typingInField } from '../ui.js';
 import { RULES, randInt, trueCount, decksEstimate } from '../cards.js';
 import { addRun } from '../store.js';
+import { sfx } from '../sfx.js';
 
 export const TC_ERRORS = {
   rounding: 'Rounding (should round down)',
@@ -79,6 +80,7 @@ export function mount(root, ctx) {
     const ok = guess === ans;
     const ms = performance.now() - prob.t;
     const err = ok ? null : classifyTC(guess, prob.rc, prob.est);
+    if (ok) sfx.right(); else sfx.wrong();
     addRun(st, { ok, ms: Math.round(ms), err, rc: prob.rc, decks: prob.est });
     ctx.save();
     const btn = h('button', { class: 'btn primary', onclick: newProblem }, 'Next', h('kbd', {}, 'Enter'));

@@ -1,6 +1,7 @@
 // Settings: the rules are fixed by design; only table pacing and data are adjustable.
 import { h, head, field, select, money } from '../ui.js';
 import { RULES } from '../cards.js';
+import { sfx, configure as configureSound } from '../sfx.js';
 
 export function mount(root, ctx) {
   const S = ctx.settings;
@@ -15,6 +16,14 @@ export function mount(root, ctx) {
         field('Count checks', select([['random', 'Random (~30% of hands)'], ['every', 'Every hand'], ['shoe', 'End of each shoe'], ['off', 'Off']], S.countCheck, (v) => set('countCheck', v))),
         field('Late surrender', select([['0', 'Off (default)'], ['1', 'On — count-based surrender']], S.surrender ? '1' : '0', (v) => set('surrender', v === '1')), 'Adds the Surrender button at the table and four surrender deviations: 15v10 at 0+, 14v10 at +3+, 15v9 at +2+, 15vA at +1+.'),
         field('Count display', select([['0', 'Hidden (reveal with C)'], ['1', 'Visible']], S.showCount ? '1' : '0', (v) => set('showCount', v === '1')))),
+      h('div', { class: 'panel form' },
+        h('h2', {}, 'Sound'),
+        field('Sound effects', select([['1', 'On'], ['0', 'Off']], S.sound.on ? '1' : '0', (v) => { S.sound.on = v === '1'; configureSound(S.sound); ctx.save(); if (S.sound.on) sfx.chip(2); draw(); }), 'Dealing, shuffling, chips, results, and right/wrong chimes in the drills. The table also has a 🔊 button.'),
+        field('Volume', h('input', {
+          type: 'range', min: 0.05, max: 1, step: 0.05, value: S.sound.volume,
+          oninput: (e) => { S.sound.volume = Number(e.target.value); configureSound(S.sound); },
+          onchange: () => { ctx.save(); sfx.deal(); },
+        }))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Data'),
         h('p', { class: 'muted' }, 'Progress is saved in this browser and synced to the Optiplex, so your phone and PC share it.'),
