@@ -542,7 +542,8 @@ export function mount(root, ctx, { training = false } = {}) {
       shoe.shuffle();
       rc = 0;
       shoeFresh = true;
-      note('Cut card reached (75%) — the dealer shuffles before the next hand. Count back to 0.', 'info');
+      bet = MIN; // fresh shoe, count 0: back to the table minimum
+      note(`Cut card reached (75%) — the dealer shuffles before the next hand. Count back to 0, bet back to ${money(MIN)}.`, 'info');
     }
     phase = 'bet';
     if (training && stack() < MIN) {
@@ -638,7 +639,8 @@ export function mount(root, ctx, { training = false } = {}) {
     sfx.shuffle();
     hands = []; dealer = []; others = [];
     notes = [];
-    note('New shoe. Count starts at 0.', 'info');
+    setBet(MIN);
+    note(`New shoe. Count starts at 0, bet back to ${money(MIN)}.`, 'info');
     render();
   }
 
