@@ -21,6 +21,9 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 function send(res, code, body, type = 'text/plain; charset=utf-8') {

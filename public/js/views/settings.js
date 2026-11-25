@@ -1,7 +1,7 @@
 // Settings: the rules are fixed by design; only table pacing and data are adjustable.
 import { h, head, field, select, money } from '../ui.js';
 import { RULES } from '../cards.js';
-import { sfx, configure as configureSound } from '../sfx.js';
+import { sfx, configure as configureSound, sampleStatus } from '../sfx.js';
 
 export function mount(root, ctx) {
   const S = ctx.settings;
@@ -18,7 +18,7 @@ export function mount(root, ctx) {
         field('Count display', select([['0', 'Hidden (reveal with C)'], ['1', 'Visible']], S.showCount ? '1' : '0', (v) => set('showCount', v === '1')))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Sound'),
-        field('Sound effects', select([['1', 'On'], ['0', 'Off']], S.sound.on ? '1' : '0', (v) => { S.sound.on = v === '1'; configureSound(S.sound); ctx.save(); if (S.sound.on) sfx.chip(2); draw(); }), 'Dealing, shuffling, chips, results, and right/wrong chimes in the drills. The table also has a 🔊 button.'),
+        field('Sound effects', select([['1', 'On'], ['0', 'Off']], S.sound.on ? '1' : '0', (v) => { S.sound.on = v === '1'; configureSound(S.sound); ctx.save(); if (S.sound.on) sfx.chip(2); draw(); }), `Dealing, shuffling, chips, results, and right/wrong chimes in the drills. The table also has a 🔊 button. Recorded sounds: ${sampleStatus().clips ? `${sampleStatus().clips} clips loaded (Kenney Casino Audio, CC0)` : 'load after your first tap'}.`),
         field('Volume', h('input', {
           type: 'range', min: 0.05, max: 1, step: 0.05, value: S.sound.volume,
           oninput: (e) => { S.sound.volume = Number(e.target.value); configureSound(S.sound); },

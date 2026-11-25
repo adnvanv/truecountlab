@@ -1,0 +1,12 @@
+{
+  "_about": "Kenney Casino Audio (CC0, kenney.nl). Names have no extension: the app picks .ogg or .m4a for the browser.",
+  "deal": ["sounds/card-slide-1", "sounds/card-slide-2", "sounds/card-slide-3", "sounds/card-slide-4", "sounds/card-slide-5", "sounds/card-slide-6", "sounds/card-slide-7", "sounds/card-slide-8"],
+  "flip": ["sounds/card-place-1", "sounds/card-place-3", "sounds/card-place-4"],
+  "tick": ["sounds/card-place-2", "sounds/card-place-4"],
+  "shuffle": ["sounds/card-shuffle"],
+  "collect": ["sounds/card-shove-1", "sounds/card-shove-2", "sounds/card-shove-3", "sounds/card-shove-4"],
+  "chip": ["sounds/chip-lay-1", "sounds/chip-lay-2", "sounds/chip-lay-3"],
+  "chips": ["sounds/chips-stack-1", "sounds/chips-stack-2", "sounds/chips-stack-3", "sounds/chips-stack-4", "sounds/chips-stack-5", "sounds/chips-stack-6"],
+  "payout": ["sounds/chips-handle-1", "sounds/chips-handle-4", "sounds/chips-handle-5", "sounds/chips-handle-6"],
+  "take": ["sounds/chips-collide-1", "sounds/chips-collide-2", "sounds/chips-collide-3", "sounds/chips-collide-4"]
+}

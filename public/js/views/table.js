@@ -1,7 +1,7 @@
 // Full table simulation (mode 7) with sessions: $500 buy-in, stop-loss at the buy-in.
 import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct } from '../ui.js';
 import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
-import { sfx, configure } from '../sfx.js';
+import { sfx, configure, shuffleMs } from '../sfx.js';
 import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS } from '../strategy.js';
 
 const ABORT = Symbol('abort');
@@ -372,12 +372,13 @@ export function mount(root, ctx, { training = false } = {}) {
     count('bets', betOk);
     note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at TC ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good' : 'warn');
 
+    if (dealer.length) sfx.collect(); // sweep last round's cards
     sfx.chip(2);
     if (shoeFresh) {
       shoeFresh = false;
       note('Shuffling…', 'info');
       sfx.shuffle();
-      await step(1500);
+      await step(shuffleMs());
     }
     sess().stack -= bet;
     insuranceBet = 0;

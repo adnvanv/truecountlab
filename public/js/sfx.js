@@ -75,12 +75,18 @@ function chips(a, n, t = 0) {
 }
 
 // ---- recorded samples ------------------------------------------------------
-// public/sounds/manifest.json maps a sound name to one or more files, e.g.
-// { "deal": ["sounds/card-slide-1.ogg", "sounds/card-slide-2.ogg"], "chip": [...] }.
-// When a name has samples, a random one plays; otherwise the synth version does.
+// public/sounds/manifest.json maps a sound name to clips listed without an
+// extension, e.g. { "deal": ["sounds/card-slide-1", ...] }. Each clip exists as
+// .ogg and .m4a; the browser gets the one it can play (Safari/iPhone: .m4a).
+// A random clip plays each time; names with no clips use the synth version.
 const samples = {}; // name -> [AudioBuffer]
 let manifest = null;
 let loading = null;
+let decoding = null;
+
+const prefersOgg = (() => {
+  try { return !!new Audio().canPlayType('audio/ogg; codecs="vorbis"'); } catch { return false; }
+})();
 
 export function loadSamples(url = 'sounds/manifest.json') {
   if (!loading) {
@@ -88,22 +94,40 @@ export function loadSamples(url = 'sounds/manifest.json') {
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => { manifest = m; })
       .catch(() => { manifest = null; });
+    // Browsers only allow audio after a gesture, so decode on the first tap or key.
+    const prime = () => {
+      removeEventListener('pointerdown', prime, true);
+      removeEventListener('keydown', prime, true);
+      const a = ctx();
+      if (a) loading.then(() => decodeAll(a));
+    };
+    addEventListener('pointerdown', prime, true);
+    addEventListener('keydown', prime, true);
   }
   return loading;
 }
 
-// Decoding needs an AudioContext, which browsers only allow after a gesture, so
-// buffers are decoded the first time sound actually plays.
-let decoding = null;
+async function decodeClip(a, base) {
+  const order = prefersOgg ? ['.ogg', '.m4a'] : ['.m4a', '.ogg'];
+  for (const ext of order) {
+    try {
+      const r = await fetch(base + ext);
+      if (!r.ok) continue;
+      return await a.decodeAudioData(await r.arrayBuffer());
+    } catch { /* try the other format */ }
+  }
+  return null;
+}
+
 function decodeAll(a) {
-  if (decoding || !manifest) return;
-  decoding = Promise.all(Object.entries(manifest).map(async ([name, files]) => {
-    const bufs = await Promise.all([].concat(files).map(async (f) => {
-      try { return await a.decodeAudioData(await (await fetch(f)).arrayBuffer()); } catch { return null; }
+  if (decoding || !manifest) return decoding;
+  decoding = Promise.all(Object.entries(manifest)
+    .filter(([name, files]) => !name.startsWith('_') && Array.isArray(files))
+    .map(async ([name, files]) => {
+      const bufs = (await Promise.all(files.map((f) => decodeClip(a, f)))).filter(Boolean);
+      if (bufs.length) samples[name] = bufs;
     }));
-    const ok = bufs.filter(Boolean);
-    if (ok.length) samples[name] = ok;
-  }));
+  return decoding;
 }
 
 function playSample(a, name, { t = 0, gain = 1, rate = 1 } = {}) {
@@ -111,7 +135,7 @@ function playSample(a, name, { t = 0, gain = 1, rate = 1 } = {}) {
   if (!list) return false;
   const src = a.createBufferSource();
   src.buffer = list[Math.floor(Math.random() * list.length)];
-  src.playbackRate.value = rate * rand(0.96, 1.04);
+  src.playbackRate.value = rate * rand(0.95, 1.05);
   const g = a.createGain();
   g.gain.value = gain;
   src.connect(g).connect(master);
@@ -119,37 +143,44 @@ function playSample(a, name, { t = 0, gain = 1, rate = 1 } = {}) {
   return true;
 }
 
-const play = (fn, name) => (...args) => {
+const play = (fn, name, gain = 1) => (...args) => {
   const a = ctx();
   if (!a) return;
   decodeAll(a);
-  if (name && playSample(a, name)) return;
+  if (name && playSample(a, name, { gain })) return;
   fn(a, ...args);
 };
 
-// Chips: recorded clacks when available, synth otherwise.
+// Chips: one recorded chip for a single chip, a stack sound for several.
 function chipSound(a, n, t = 0) {
-  if (samples.chip) {
-    for (let i = 0; i < Math.min(n, 4); i++) playSample(a, 'chip', { t: t + i * 0.07, gain: 0.9 });
-  } else {
-    chips(a, n, t);
-  }
+  if (n > 1 && playSample(a, 'chips', { t, gain: 0.9 })) return;
+  if (playSample(a, 'chip', { t, gain: 0.9 })) return;
+  chips(a, n, t);
 }
 
+// Which recorded sounds are ready: { names: [...], clips: n }.
+export const sampleStatus = () => ({ names: Object.keys(samples), clips: Object.values(samples).reduce((n, l) => n + l.length, 0) });
+
+// How long the shuffle lasts, so the dealer waits for it before dealing.
+export const shuffleMs = () => (samples.shuffle ? Math.round(samples.shuffle[0].duration * 1000) - 300 : 1500);
+
+const chime = (a, notes, step, gain = 0.07) => notes.forEach((f, i) => tone(a, { t: i * step, f, dur: 0.3, type: 'triangle', gain }));
+
 export const sfx = {
-  // Card slides out of the shoe and lands.
+  // Card slides out of the shoe.
   deal: play((a) => {
     noise(a, { dur: 0.12, type: 'bandpass', f: 1600, f2: 5200, q: 0.7, gain: 0.32 });
     noise(a, { t: 0.1, dur: 0.035, type: 'highpass', f: 3000, gain: 0.25, attack: 0.001 });
-  }, 'deal'),
+  }, 'deal', 0.85),
   // Hole card turned over.
   flip: play((a) => {
     noise(a, { dur: 0.06, type: 'highpass', f: 2200, gain: 0.35, attack: 0.001 });
     noise(a, { t: 0.05, dur: 0.04, type: 'bandpass', f: 1100, q: 1.5, gain: 0.25 });
   }, 'flip'),
-  // Lighter flip used by the countdown drills.
-  tick: play((a) => noise(a, { dur: 0.035, type: 'highpass', f: 3500, gain: 0.18, attack: 0.001 }), 'tick'),
-  // Riffle, bridge, riffle.
+  // Quieter card used by the countdown drills.
+  tick: play((a) => noise(a, { dur: 0.035, type: 'highpass', f: 3500, gain: 0.18, attack: 0.001 }), 'tick', 0.55),
+  // Dealer sweeps the last round's cards into the discard tray.
+  collect: play(() => {}, 'collect', 0.7),
   shuffle: play((a) => {
     for (const start of [0.05, 0.85]) {
       for (let i = 0; i < 30; i++) {
@@ -160,24 +191,28 @@ export const sfx = {
     }
   }, 'shuffle'),
   chip: play((a, n = 2) => chipSound(a, n)),
+  // Dealer pays you: chips pushed over, with a soft rising chime.
   win: play((a) => {
-    [523.25, 659.25, 783.99].forEach((f, i) => tone(a, { t: i * 0.08, f, dur: 0.28, type: 'triangle', gain: 0.09 }));
-    chipSound(a, 3, 0.18);
-  }, 'win'),
+    chime(a, [523.25, 659.25, 783.99], 0.08, 0.05);
+    if (!playSample(a, 'payout', { t: 0.05 })) chips(a, 3, 0.18);
+  }),
   blackjack: play((a) => {
-    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(a, { t: i * 0.07, f, dur: 0.35, type: 'triangle', gain: 0.09 }));
-    chipSound(a, 4, 0.3);
-  }, 'blackjack'),
-  push: play((a) => tone(a, { f: 523.25, dur: 0.16, type: 'sine', gain: 0.07 }), 'push'),
+    chime(a, [523.25, 659.25, 783.99, 1046.5, 1318.5], 0.07, 0.07);
+    if (!playSample(a, 'payout', { t: 0.1 })) chips(a, 4, 0.3);
+    playSample(a, 'chips', { t: 0.45, gain: 0.8 });
+  }),
+  push: play((a) => tone(a, { f: 523.25, dur: 0.16, type: 'sine', gain: 0.05 })),
+  // Dealer takes your chips.
   lose: play((a) => {
-    tone(a, { f: 247, f2: 165, dur: 0.32, type: 'sine', gain: 0.1 });
-    noise(a, { dur: 0.06, type: 'lowpass', f: 600, gain: 0.25 });
-  }, 'lose'),
+    if (!playSample(a, 'take', { gain: 0.9 })) noise(a, { dur: 0.06, type: 'lowpass', f: 600, gain: 0.25 });
+    tone(a, { t: 0.05, f: 247, f2: 165, dur: 0.3, type: 'sine', gain: 0.06 });
+  }),
   bust: play((a) => {
-    tone(a, { f: 330, dur: 0.12, type: 'square', gain: 0.04 });
-    tone(a, { t: 0.13, f: 220, f2: 180, dur: 0.22, type: 'square', gain: 0.04 });
-  }, 'bust'),
-  right: play((a) => { tone(a, { f: 880, dur: 0.09, gain: 0.06 }); tone(a, { t: 0.07, f: 1318.5, dur: 0.14, gain: 0.06 }); }, 'right'),
-  wrong: play((a) => tone(a, { f: 196, f2: 165, dur: 0.18, type: 'sawtooth', gain: 0.035 }), 'wrong'),
-  click: play((a) => noise(a, { dur: 0.02, type: 'highpass', f: 4000, gain: 0.12, attack: 0.001 }), 'click'),
+    playSample(a, 'take', { t: 0.15, gain: 0.9 });
+    tone(a, { f: 330, dur: 0.12, type: 'square', gain: 0.03 });
+    tone(a, { t: 0.13, f: 220, f2: 180, dur: 0.22, type: 'square', gain: 0.03 });
+  }),
+  right: play((a) => { tone(a, { f: 880, dur: 0.09, gain: 0.05 }); tone(a, { t: 0.07, f: 1318.5, dur: 0.14, gain: 0.05 }); }),
+  wrong: play((a) => tone(a, { f: 196, f2: 165, dur: 0.18, type: 'sawtooth', gain: 0.03 })),
+  click: play((a) => noise(a, { dur: 0.02, type: 'highpass', f: 4000, gain: 0.12, attack: 0.001 })),
 };
