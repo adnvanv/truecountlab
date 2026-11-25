@@ -166,20 +166,6 @@ export function mount(root, ctx, { training = false } = {}) {
     render();
   }
 
-  function totalText(cards) {
-    const vis = cards.filter((c) => !c.down);
-    if (!vis.length) return '';
-    const { total, soft } = handTotal(vis);
-    if (total > 21) return 'Bust';
-    if (cards.length === 2 && vis.length === 2 && total === 21) return 'BJ';
-    return soft && total < 21 ? `${total - 10}/${total}` : String(total);
-  }
-  function badge(cards) {
-    if (!cards.length) return null;
-    const t = totalText(cards);
-    return h('span', { class: `badge${t === 'Bust' ? ' bust' : t === 'BJ' ? ' bj' : ''}` }, t);
-  }
-
   function cardView(c, opts = {}) {
     const el = cardEl(c, { down: c.down, anim: takeAnim(c), ...opts });
     if (c.flip) { c.flip = false; el.classList.add('flip'); }
@@ -241,11 +227,11 @@ export function mount(root, ctx, { training = false } = {}) {
     trayBox.replaceChildren(trayEl(shoe.dealt, RULES.decks), h('span', { class: 'felt-tag' }, 'Discards'));
     shoeEl.style.setProperty('--left', String(shoe.remaining / (RULES.decks * 52)));
     dealerZone.replaceChildren(
-      h('div', { class: 'zone-label' }, 'Dealer', badge(dealer)),
+      h('div', { class: 'zone-label' }, 'Dealer'),
       h('div', { class: 'hand' }, dealer.length ? dealer.map((c) => cardView(c)) : [h('div', { class: 'slot' }), h('div', { class: 'slot' })]));
     const otherSeats = others.map((o, i) => h('div', { class: 'seat other' },
       h('div', { class: 'hand' }, o.cards.map((c) => cardView(c, { size: 'sm' }))),
-      h('div', { class: 'zone-label' }, `P${i + 1}`, badge(o.cards))));
+      h('div', { class: 'zone-label' }, `P${i + 1}`)));
     const handEls = hands.length
       ? hands.map((hd, i) => h('div', {
         class: `my-hand${phase === 'play' && i === active ? ' active' : ''}${hd.result ? ` ${hd.result.cls}` : ''}`,
