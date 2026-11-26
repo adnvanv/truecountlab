@@ -83,7 +83,8 @@ switch_to() {
   cp "$app"/deploy/*.service "$app"/deploy/*.timer "$HOME/.config/systemd/user/"
   echo "GIT_COMMIT=$commit" >"$state/build.env"
   systemctl --user daemon-reload
-  systemctl --user enable -q count-trainer truecountlab-deploy.timer truecountlab-backup.timer
+  systemctl --user enable -q count-trainer
+  systemctl --user enable -q --now truecountlab-deploy.timer truecountlab-backup.timer
   systemctl --user restart count-trainer
   systemctl --user try-restart litestream || true
 }
