@@ -1,0 +1,9 @@
+[Unit]
+Description=TrueCountLab: deploy the newest main commit once its CI checks pass
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/blackjack/deploy/autodeploy.sh
+# A deploy waits up to 30s for the health check; give it room.
+TimeoutStartSec=180

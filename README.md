@@ -1,99 +1,155 @@
 # TrueCountLab
 
-A blackjack card-counting trainer for one strategy, live at **[truecountlab.com](https://truecountlab.com)**:
+[![CI](https://github.com/adnvanv/truecountlab/actions/workflows/ci.yml/badge.svg)](https://github.com/adnvanv/truecountlab/actions/workflows/ci.yml)
+![hands played](https://img.shields.io/endpoint?url=https%3A%2F%2Ftruecountlab.com%2Fapi%2Fbadge%2Fhands)
+![plays graded](https://img.shields.io/endpoint?url=https%3A%2F%2Ftruecountlab.com%2Fapi%2Fbadge%2Fgraded)
+![accounts](https://img.shields.io/endpoint?url=https%3A%2F%2Ftruecountlab.com%2Fapi%2Fbadge%2Faccounts)
 
-- **Game:** 6 decks, S17, DAS, 3:2, no surrender, 75% penetration, $25 minimum.
-- **Count:** Hi-Lo. True count = running count ÷ decks remaining, with decks estimated to the nearest half deck and the result rounded down.
-- **Deviations:** core: insurance +3, 16v10 stand 0, 15v10 stand +4, 12v3 stand +2, 12v2 stand +3, 10v10 double +4, 10vA double +4, 9v2 double +1. Low-count hits: 12v4 below 0, 12v5 below −2, 12v6 below −1, 13v2 at −1 or lower, 13v3 at −2 or lower. Extras: 11vA double +1, 9v7 double +3, 8v6 double +2, 8v5 double +4, 16v9 stand +5. With the surrender toggle on (off by default): 15v10 0, 14v10 +3, 15v9 +2, 15vA +1.
-- **Bet ramp:** $25 at TC ≤ +1, $50 at +2/+3, $75 at +4 and up.
-- **Bankroll:** $3,000 with a $500 session buy-in. The stop-loss is the buy-in.
+A blackjack card-counting trainer with real-time multiplayer, live at **[truecountlab.com](https://truecountlab.com)**. Drill Hi-Lo counting, true counts, basic strategy and deviations, play full shoes, or sit at a shared table and race other players in count battles. The server deals every card and grades every play.
 
-## Home
-The home screen has a **ready-to-play checklist** that unlocks once all four gates are met at the same time:
-- 5 countdowns in a row with the right count at deck pace (≤ 0.58s per card)
-- 98%+ basic strategy over the last 200 hands
-- 95%+ true count over the last 100 drills
-- 95%+ deviations over the last 100 hands
+![A shared table: five players, your hand in the middle, private grading in the side column](docs/screenshots/shared-table.jpg)
 
-## Modes
-1. **Countdown:** a random 15–20 cards from a fresh deck (other lengths are selectable), then you enter the running count. Misses show a card-by-card review. The goal is the right count at deck pace (≤ 0.58s per card).
-2. **True Count:** a running count plus a discard tray (or a decks-remaining number) → enter the true count. Mistakes are classified, e.g. rounding, dividing by decks played, or a bad deck estimate.
-3. **Basic Strategy:** random hands, instant feedback, a mistake heatmap, and an optional focus on weak spots.
-4. **Deviations:** each hand shows its true count. Your pick is graded as basic strategy, the deviation, or a wrong play. Practice is weighted toward the deviations you miss, and there's a threshold drill at index −1/0/+1.
-5. **Table:** a full 6-deck shoe with other players. It grades your play, deviations, and bets against the ramp, and gives random count checks. The count is hidden, and C reveals it. Sessions use the $500 buy-in and stop-loss.
-6. **Sessions:** simulator sessions log themselves, and you add real casino sessions by hand. The page charts results and counting accuracy over time.
+| Count battle | On a phone |
+|---|---|
+| ![Count battle: everyone gets the same hand at the same moment](docs/screenshots/count-battle.jpg) | ![The training table on a phone, with the cheat panel on](docs/screenshots/phone-training.jpg) |
 
-- **Training:** the table with practice chips, nothing logged, and a cheat toggle (X). The cheat panel shows the running count, decks left, true count, correct bet, and correct play, and highlights the right button.
-- **Bankroll Calc:** hourly EV, SD, and risk of ruin from bankroll, unit, and spread. It uses a true-count frequency table simulated for this game.
+## Highlights
+- **Real-time multiplayer on a hand-written WebSocket server** (RFC 6455 framing, fragmentation, ping/pong, close codes) on Node's built-in `http`, with no dependencies. Shared tables seat 5 players at one shoe; count battles race up to 8.
+- **The server is authoritative.** It deals, keeps the clock, and grades bets, plays, insurance and count checks with the same strategy code the browser uses. No card is sent before it's on screen, and moves are only accepted while the table is waiting for one.
+- **Measured capacity:** one Node process on a 4-core home server ran **1,500 concurrent tables (7,500 players) at a p95 move round trip of 63 ms** with zero errors ([load test](#load-test)).
+- **Accounts:** email/password (scrypt), Google and Discord OAuth (PKCE, no auto-merge), revisioned progress sync with conflict merging, Elo ratings, leaderboards.
+- **Type-checked JavaScript, no build step:** JSDoc types checked by TypeScript 7 (`tsc --checkJs`). The server and the shared game logic pass strict mode.
+- **CI/CD:** GitHub Actions runs the type check, 100 tests (42 game-rules tests with stacked shoes and 58 end-to-end tests with scripted players), a load-test smoke run and a Docker build. The server deploys a commit only after all of them pass, and rolls back by itself if the new version fails its health check.
+- **Operations:** structured JSON logs, Prometheus metrics, health checks, nightly database snapshots plus continuous Litestream replication, and graceful restarts.
 
-## Online
-**Play online** (`#play`) has live multiplayer over WebSockets:
-- **Count battles** for up to 8 players. Everyone gets the same question at the same moment: running count (cards flash by, faster each round), true count (a running count and a discard tray), or play the hand (deviations included). Right answers score 100 plus up to 100 for speed. The host picks 6, 9 or 12 rounds and which round types.
-- **Shared tables** for up to 5 players at one 6-deck shoe, same rules and full-size layout as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately in your hand log. If the bet timer (15s) runs out while you're connected, you leave the seat; someone who sits down mid-bet or drops offline just sits the hand out. Letting a timer run out is graded as what happens (a turn stands, insurance is declined, a count check is a miss), so waiting can't dodge a hard call. Moves are only taken while the table is waiting for one, never while a card is still being dealt.
-- **Rooms:** quick play joins an open public room or starts one; private rooms are joined by a 6-letter code or invite link. The host can start games, change battle settings and remove players.
-- **Chat** in every room: 200 characters, 5 messages per 10 seconds, slurs and strong profanity masked, mute per player. Never saved.
-- **Leaderboards** (signed-in players only): battle rating (Elo, moves only when two or more signed-in players battle), wins (outright first place; a tie for first isn't a win) and accuracy, and shared-table play and count-check accuracy.
-
-Guests can play everything with a nickname; only signed-in players are rated or stored. The server deals, keeps the clock and grades with the same `cards.js` and `strategy.js` the browser uses. Nothing about a round is sent before it's on screen.
-
-**Stats** shows accuracy, speed, error types, and progress by day for each mode. **Strategy** is the reference chart.
-
-## Accounts
-Guests can play everything; their progress stays in the browser. Accounts save progress to the server so it follows you to any device:
-- **Sign-in:** email + password (scrypt-hashed), or Google / Discord (OAuth). A Google/Discord login is never auto-merged into an existing password account with the same email; you connect it from the Account page while signed in.
-- **Sessions:** random tokens in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https). Only a SHA-256 of each token is stored.
-- **Sync:** one JSON document per account with a revision number. A stale save gets `409` plus the newer copy; the app merges (drill history is unioned, counters take the larger value) and retries.
-- **Guest → account:** signing up uploads the browser's guest progress. Signing in to an account that already has progress asks before adding it.
-- **Protection:** per-IP and per-account rate limits on sign-in, an origin check on every request that changes data, a Content-Security-Policy, and HSTS on the public site.
-- **Your data:** export as JSON or delete the account (and all progress) from the Account page. See `/privacy`.
-
-Data lives in `data/truecountlab.db` (Node's built-in SQLite, no npm dependencies).
-
-### Optional sign-in providers and email
-They switch on when their keys are in the server's `.env` (never in git):
+## Architecture
+```mermaid
+flowchart LR
+  subgraph Browser["Browser (vanilla JS, ES modules, no build)"]
+    UI[Views and drills] --- Shared1[cards.js / strategy.js]
+  end
+  Browser -- "HTTPS + WSS" --> CF["Cloudflare edge<br/>TLS, CDN, HSTS"]
+  CF -- "Cloudflare Tunnel<br/>(no open ports)" --> Node
+  subgraph Server["Home server (Ubuntu, systemd user services)"]
+    Node["Node.js 22<br/>http + WebSocket (server/ws.js)"] --> Live["Live hub (server/live.js)<br/>rooms, lobby, chat"]
+    Live --> Games["Game engine<br/>shared tables, count battles"]
+    Games --- Shared2[cards.js / strategy.js]
+    Node --> Auth["Accounts, OAuth, progress sync"]
+    Auth --> DB[("SQLite (node:sqlite, WAL)")]
+    Games --> DB
+    Deploy["Deploy timer<br/>(deploy/autodeploy.sh)"] -. "restart + health check" .-> Node
+  end
+  DB -. "Litestream" .-> R2[("Cloudflare R2")]
+  GH["GitHub Actions<br/>types, tests, load test, Docker"] -. "checks passed" .-> Deploy
 ```
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-DISCORD_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
-RESEND_API_KEY=...            # password-reset emails
-MAIL_FROM=TrueCountLab <no-reply@truecountlab.com>
-```
-OAuth redirect URIs: `https://truecountlab.com/auth/google/callback` and `https://truecountlab.com/auth/discord/callback`. Google and Discord sign-in is offered only on the public address, since that's where the providers send people back.
+- **One process, in-memory rooms.** A room's state lives with the process that hosts it, and the database only stores accounts, progress, ratings and usage totals. That's why one process is fast, and also where it tops out (see below). Scaling past that means running several processes and routing each room code to one of them.
+- **Grading code is shared:** `public/js/cards.js` and `strategy.js` run in the browser for solo drills, and the server imports the same files to grade online play.
+- **State updates are coalesced:** many changes in one tick send one update per player, with each player's private view (their grading, their available moves) built on the server.
 
-`scripts/set-keys.sh google|discord|email` asks for the keys (secrets typed hidden), writes them to `.env`, restarts the app, and prints which sign-in options are on:
-```
-ssh -t <server> "bash ~/blackjack/scripts/set-keys.sh google"
-```
+## Load test
+`loadtest/` is a Go program in which each simulated player is a goroutine with its own WebSocket connection. Players sit at real tables (5 a table) and play hands: they bet, hit or stand, decline insurance and answer count checks. It times every action from send to the server's next state update, raises the table count in stages, and reads the server's CPU, memory and event-loop delay from `/metrics`.
 
-`scripts/import-legacy.js` moves the old pre-accounts save file (`data/state.json`) into one account.
+Results on the production machine (Intel 4-core, 16 GB, Node 22, server and load generator on the same box), from [`docs/loadtest-results.json`](docs/loadtest-results.json):
+
+| Tables | Players | Move p50 | Move p95 | Move p99 | Actions/s | Server CPU (1 core) | Memory | Errors |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 500 | 2 ms | 9 ms | 18 ms | 85 | 26% | 124 MB | 0 |
+| 250 | 1,250 | 3 ms | 11 ms | 20 ms | 224 | 54% | 179 MB | 0 |
+| 500 | 2,500 | 3 ms | 26 ms | 41 ms | 446 | 73% | 214 MB | 0 |
+| 1,000 | 5,000 | 9 ms | 51 ms | 104 ms | 906 | 88% | 227 MB | 0 |
+| **1,500** | **7,500** | **14 ms** | **63 ms** | **139 ms** | **1,347** | **100%** | **262 MB** | **0** |
+| 2,000 | 10,000 | 362 ms | 501 ms | 523 ms | 1,472 | saturated | 494 MB | 0 |
+
+At 1,500 tables the single JavaScript thread is fully used. Past that, moves queue (500 ms at 2,000 tables), but nothing errors or drops. CI runs a 25 and 100 table smoke test on every push.
+
+```
+cd loadtest && go run . -url http://127.0.0.1:3099 -steps 100,500,1000 -duration 45s
+```
+Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIVE_MAX_ROOMS`, `LIVE_ROOMS_PER_MIN`), never against the live site; the tool refuses `truecountlab.com`.
+
+## The game
+- **Rules:** 6 decks, S17, DAS, 3:2, no surrender, 75% penetration, $25 minimum.
+- **Count:** Hi-Lo. True count = running count ÷ decks remaining (estimated to the nearest half deck), rounded down.
+- **Deviations:**
+  - Core: insurance +3, 16v10 stand 0, 15v10 stand +4, 12v3 stand +2, 12v2 stand +3, 10v10 double +4, 10vA double +4, 9v2 double +1.
+  - Low-count hits: 12v4 below 0, 12v5 below −2, 12v6 below −1, 13v2 at −1 or lower, 13v3 at −2 or lower.
+  - Extras: 11vA double +1, 9v7 double +3, 8v6 double +2, 8v5 double +4, 16v9 stand +5.
+  - Optional surrender (off by default): 15v10 0, 14v10 +3, 15v9 +2, 15vA +1.
+- **Bet ramp:** $25 at TC ≤ +1, $50 at +2/+3, $75 at +4 and up. **Bankroll:** $3,000, $500 session buy-in and stop-loss.
+
+**Solo modes**
+- **Countdown:** flash cards from a fresh deck, then enter the running count. The goal is deck pace (≤ 0.58 s a card).
+- **True Count:** a running count and a discard tray. Mistakes are classified (rounding, decks played instead of remaining, a bad deck estimate).
+- **Basic Strategy:** random hands with instant feedback and a mistake heatmap.
+- **Deviations:** hands at a given true count, weighted toward the deviations you miss, plus a threshold drill.
+- **Table:** full shoes with simulated players. Your play, deviations and bets are graded, with random count checks. **Training** is the same table with a cheat panel.
+- **Sessions, Stats, Bankroll Calc:** logged results, accuracy over time, and EV / SD / risk of ruin from a simulated true-count distribution.
+- **Home:** a ready-to-play checklist that unlocks when all four gates hold at once: deck-pace countdowns, 98% basic strategy, 95% true count and 95% deviations.
+
+**Online** (`#play`)
+- **Count battles:** running-count, true-count and play-the-hand rounds. Everyone gets the same question at the same moment, and a right answer scores 100 plus up to 100 for speed.
+- **Shared tables:** 5 seats, $500 in table chips, private grading. Letting a timer run out is graded as what happens (stand, no insurance, a missed check), and missing the bet timer gives up your seat.
+- **Rooms:** quick play, private rooms by code or invite link, host controls, and room chat (masked, rate-limited, never saved).
+- **Leaderboards** for signed-in players: battle Elo, wins (outright first only), battle accuracy, and table play and count-check accuracy.
+
+## Accounts and privacy
+- **Sign-in:** email + password (scrypt), or Google / Discord. A provider login is never auto-merged into a password account with the same email; you connect it from the Account page.
+- **Sessions:** random tokens in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https). Only their SHA-256 is stored.
+- **Sync:** one JSON document per account with a revision number. A stale save gets `409` plus the newer copy, and the client merges and retries.
+- **Protection:** rate limits per IP and per account, origin checks on every write and every WebSocket, a Content-Security-Policy, and HSTS.
+- **Your data:** export or delete your account from the Account page. Usage totals are anonymous counts only. See [`/privacy`](https://truecountlab.com/privacy).
+
+## Operations
+- **Health:** `GET /healthz` returns `{"status":"ok","db":"ok","build":…,"commit":…}` (503 if the database doesn't answer).
+- **Metrics:** `GET /metrics` serves Prometheus text: HTTP rate and latency by route, WebSocket messages and handling time by move type, event-loop delay, memory, CPU, connections, rooms and usage totals. It's only served to the server itself and the private network, never through Cloudflare.
+- **Logs:** one JSON object per line (`server/log.js`), filterable with `journalctl --user -u count-trainer -o cat | jq 'select(.level=="error")'`.
+- **Usage:** `GET /api/stats` (accounts, hands, plays graded, battles), with shields.io badge endpoints at `/api/badge/hands|graded|battles|accounts`.
+- **Backups:**
+  - `deploy/backup.sh` takes a consistent snapshot (`VACUUM INTO`, integrity-checked, gzipped) nightly at 04:30 and before every deploy, keeping 14 nightly and 10 pre-deploy copies in `~/backups/truecountlab`.
+  - Litestream streams every change to Cloudflare R2. It turns on with `bash scripts/set-keys.sh r2`, and `deploy/litestream.yml` shows how to restore.
+- **Shutdown:** on SIGTERM, live players are told the site is updating, connections close with code 1012 (browsers reconnect by themselves), and usage counters are flushed.
 
 ## Develop
 ```
 node --disable-warning=ExperimentalWarning server.js   # http://127.0.0.1:3040
 ```
-It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
+Vanilla JS with ES modules: no build step, and no runtime dependencies. `HOST` and `PORT` choose where it listens.
 
-Checks (no dependencies, Node 22+):
-- `node scripts/test-games.mjs`: the online games' rules, in-process with stacked shoes. Covers table payouts (blackjack, insurance, doubles, splits, split aces, S17), timers, seats, count keeping, battle scoring and round generation, and ratings.
-- `node scripts/test-live.mjs`: end to end against a throwaway server. Covers guests and accounts, battles, the lobby, chat, kicks, shared tables, connection limits and the WebSocket protocol. `LIVE_TIME_SCALE` speeds up the game clocks there.
-- `node scripts/check-null-text.js`: finds places where the page could print "null" or "false" as text.
-
-Scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of everything in `public/`. Each deploy changes every asset URL, so browsers and Cloudflare never keep running old code; with `NODE_ENV=production` those URLs are cached for a year.
+```
+npm ci --prefix tools && npm run typecheck --prefix tools      # tsc --checkJs (dev-only tooling)
+node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 42 game-rules tests, stacked shoes
+node scripts/test-live.mjs                                     # 58 end-to-end tests against a throwaway server
+node scripts/check-null-text.js                                # no "null" printed as page text
+```
+- **Type checks:** four projects. `tsconfig.server.json` and `tsconfig.core.json` (the server and `cards.js` / `strategy.js`) are strict. `tsconfig.web.json` and `tsconfig.scripts.json` check the views and test scripts without strict mode. Shared server types live in `server/types.d.ts`.
+- **Assets:** scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of `public/`. Every deploy changes every asset URL, so no browser or CDN keeps old code.
+- **Docker:**
+  ```
+  docker build -t truecountlab . && docker run -p 3040:3040 -v tcl-data:/data truecountlab
+  ```
 
 ## Deploy
 ```
 git push
 ```
-`git push` sends `main` to GitHub and to a bare repo on the server. The server's `post-receive` hook resets the live checkout to the pushed `main`, installs `deploy/count-trainer.service`, and restarts the systemd user service.
+`git push` sends `main` to GitHub, where CI runs. On the server, `truecountlab-deploy.timer` runs `deploy/autodeploy.sh` every minute:
+1. Fetch `main` from GitHub.
+2. Wait until every CI check on the new commit has passed (read from the public GitHub API, so no token is needed).
+3. Snapshot the database.
+4. Check out the commit, install its systemd units, and restart the app.
+5. Wait for `/healthz` to report the new commit. If it doesn't within 30 s, roll back and skip that commit.
 
-The public site reaches the server through a **Cloudflare Tunnel**: `cloudflared` runs on the server as the `cloudflared` user service (`deploy/cloudflared.service`) and forwards `truecountlab.com` to the app on `127.0.0.1:3040`. No ports are opened on the network. Requests that come through Cloudflare are redirected to the one canonical address, `https://truecountlab.com`.
+Nothing on the server is reachable from the internet except through the Cloudflare Tunnel (`deploy/cloudflared.service` forwards `truecountlab.com` to `127.0.0.1:3040`), and GitHub holds no secrets. Database migrations only add tables or columns, so a rollback never needs to undo one. In an emergency, `FORCE=1 bash ~/blackjack/deploy/autodeploy.sh` deploys without waiting for CI.
 
-Server-only files stay out of git and survive deploys:
-- `.env` sets `HOST`/`PORT` (the service reads it; default `127.0.0.1:3040`).
-- `data/` holds saved progress.
+**Server-only files** (never in git, kept across deploys):
+- `.env`: `HOST`, `PORT`, and the OAuth, email and R2 keys, saved with `scripts/set-keys.sh google|discord|email|r2`. Secrets are typed hidden.
+- `data/`: the database.
 
-On the server: `systemctl --user status count-trainer` and `journalctl --user -u count-trainer`.
+OAuth redirect URIs are `https://truecountlab.com/auth/{google,discord}/callback`; provider sign-in is offered only on the public address.
+
+**Useful commands:**
+- `systemctl --user status count-trainer truecountlab-deploy.timer litestream`
+- `journalctl --user -u truecountlab-deploy -o cat`
 
 ## Credits
 Card and chip sounds: [Casino Audio](https://kenney.nl/assets/casino-audio) by Kenney (CC0).

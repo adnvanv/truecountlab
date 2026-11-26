@@ -1,0 +1,16 @@
+# Litestream: continuous backup of the SQLite database to S3-compatible storage
+# (Cloudflare R2). Every change is shipped within a second or so; a point-in-time copy
+# can be restored on any machine. Credentials and the bucket come from ~/blackjack/.env
+# (saved with: bash scripts/set-keys.sh r2).
+#
+# Restore:  litestream restore -config deploy/litestream.yml -o restored.db $HOME/blackjack/data/truecountlab.db
+dbs:
+  - path: ${HOME}/blackjack/data/truecountlab.db
+    replica:
+      type: s3
+      endpoint: ${LITESTREAM_ENDPOINT}
+      bucket: ${LITESTREAM_BUCKET}
+      path: truecountlab
+      region: auto
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}

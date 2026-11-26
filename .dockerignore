@@ -1,0 +1,14 @@
+.git
+.github
+.claude
+.env
+data/
+node_modules/
+tools/
+loadtest/
+scripts/
+docs/
+assets-src/
+deploy/
+*.md
+Dockerfile

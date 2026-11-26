@@ -1,0 +1,106 @@
+# CI: every push and pull request is type-checked, tested, load-tested and built as a
+# Docker image. The server deploys a commit only after all of these jobs pass
+# (deploy/autodeploy.sh reads their results from GitHub).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+      - run: npm ci --prefix tools
+      - name: tsc --checkJs (server and shared game code strict; views and scripts checked)
+        run: npm run typecheck --prefix tools
+      - name: No "null" printed as page text
+        run: node scripts/check-null-text.js
+
+  test:
+    name: Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24] # the server runs 22; 24 is the next LTS
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Game rules (stacked shoes, timers, ratings)
+        run: node --disable-warning=ExperimentalWarning scripts/test-games.mjs
+      - name: End to end (real server, scripted players, WebSocket protocol)
+        run: node scripts/test-live.mjs
+
+  loadtest:
+    name: Load test (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: loadtest/go.mod
+          cache-dependency-path: loadtest/go.sum
+      - name: Vet and build
+        working-directory: loadtest
+        run: |
+          go vet ./...
+          go build -o loadtest .
+      - name: Start a test server
+        run: |
+          mkdir -p /tmp/lt-data
+          LIVE_MAX_PER_IP=100000 LIVE_MAX_ROOMS=100000 LIVE_ROOMS_PER_MIN=100000 \
+          PORT=3099 DATA_DIR=/tmp/lt-data NODE_ENV=production LOG_LEVEL=warn \
+            node --disable-warning=ExperimentalWarning server.js > /tmp/lt-server.log 2>&1 &
+          for i in $(seq 1 50); do curl -fsS http://127.0.0.1:3099/healthz && break; sleep 0.2; done
+      - name: 25 and 100 tables, 5 players each
+        run: |
+          ulimit -n 65536
+          ./loadtest/loadtest -url http://127.0.0.1:3099 -steps 25,100 -duration 20s -settle 6s -out loadtest-results.json
+      - name: Server log
+        if: always()
+        run: tail -n 50 /tmp/lt-server.log
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: loadtest-results
+          path: loadtest-results.json
+          if-no-files-found: ignore
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: docker build -t truecountlab .
+      - name: Run and check health
+        run: |
+          docker run -d --name tcl -p 3040:3040 truecountlab
+          for i in $(seq 1 50); do curl -fsS http://127.0.0.1:3040/healthz && break; sleep 0.3; done
+          curl -fsS http://127.0.0.1:3040/healthz | grep -q '"status":"ok"'
+          curl -fsS -o /dev/null http://127.0.0.1:3040/
+      - name: Container log
+        if: always()
+        run: docker logs tcl

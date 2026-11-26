@@ -6,6 +6,7 @@
 #   ssh -t boward@boward "bash ~/blackjack/scripts/set-keys.sh google"
 #   ssh -t boward@boward "bash ~/blackjack/scripts/set-keys.sh discord"
 #   ssh -t boward@boward "bash ~/blackjack/scripts/set-keys.sh email"
+#   ssh -t boward@boward "bash ~/blackjack/scripts/set-keys.sh r2"      (Litestream backups to Cloudflare R2)
 # Run it again any time to replace a key.
 set -euo pipefail
 
@@ -16,7 +17,8 @@ case "${1:-}" in
   google)  KEYS=(GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET) ;;
   discord) KEYS=(DISCORD_CLIENT_ID DISCORD_CLIENT_SECRET) ;;
   email)   KEYS=(RESEND_API_KEY MAIL_FROM) ;;
-  *) echo "Usage: bash $0 google|discord|email" >&2; exit 1 ;;
+  r2)      KEYS=(LITESTREAM_ENDPOINT LITESTREAM_BUCKET LITESTREAM_ACCESS_KEY_ID LITESTREAM_SECRET_ACCESS_KEY) ;;
+  *) echo "Usage: bash $0 google|discord|email|r2" >&2; exit 1 ;;
 esac
 
 declare -A VALUES
@@ -32,6 +34,7 @@ for k in "${KEYS[@]}"; do
   # Trim stray whitespace and line breaks from pasting.
   v="${v//$'\r'/}"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
   if [[ -z $v ]]; then echo "Nothing entered for $k. Stopped; nothing was changed." >&2; exit 1; fi
+  if [[ $k == LITESTREAM_ENDPOINT && $v != https://* ]]; then echo "The endpoint starts with https:// (R2 shows it as https://<account id>.r2.cloudflarestorage.com). Stopped; nothing was changed." >&2; exit 1; fi
   if [[ $v =~ [\"\'\\\$\`] ]]; then echo "$k has a character that can't be right (quote, backslash, \$ or backtick). Stopped; nothing was changed." >&2; exit 1; fi
   VALUES[$k]="$v"
 done
@@ -48,6 +51,20 @@ done
 chmod 600 "$tmp"
 mv "$tmp" "$ENV_FILE"
 echo "Saved ${KEYS[*]} to $ENV_FILE"
+
+if [[ $1 == r2 ]]; then
+  systemctl --user daemon-reload
+  systemctl --user enable -q litestream
+  systemctl --user restart litestream
+  sleep 4
+  if systemctl --user is-active -q litestream; then
+    echo "Litestream is running: every database change now goes to R2."
+    journalctl --user -u litestream -n 3 --no-pager -o cat
+    exit 0
+  fi
+  echo "Litestream didn't start. Check: journalctl --user -u litestream -n 30" >&2
+  exit 1
+fi
 
 systemctl --user restart count-trainer
 for _ in 1 2 3 4 5 6 7 8 9 10; do

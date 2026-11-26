@@ -1,0 +1,6 @@
+[Unit]
+Description=TrueCountLab: nightly database snapshot
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/blackjack/deploy/backup.sh nightly

@@ -1,0 +1,15 @@
+[Unit]
+Description=Litestream: stream every database change to Cloudflare R2
+After=network-online.target count-trainer.service
+
+[Service]
+Type=simple
+# Off until its keys are saved (bash scripts/set-keys.sh r2).
+ExecCondition=/bin/sh -c 'grep -q "^LITESTREAM_BUCKET=" %h/blackjack/.env'
+EnvironmentFile=-%h/blackjack/.env
+ExecStart=%h/.local/bin/litestream replicate -config %h/blackjack/deploy/litestream.yml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

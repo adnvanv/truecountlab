@@ -12,6 +12,8 @@ RestartSec=5
 # HOST and PORT come from ~/blackjack/.env on the server (kept out of git).
 # Without it the server listens on 127.0.0.1:3040.
 EnvironmentFile=-%h/blackjack/.env
+# GIT_COMMIT, written by deploy/autodeploy.sh, so /healthz can say which commit is live.
+EnvironmentFile=-%h/.local/state/truecountlab/build.env
 Environment=NODE_ENV=production
 
 [Install]
