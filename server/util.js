@@ -9,6 +9,10 @@ const PUBLIC_ORIGIN = `https://${PUBLIC_HOST}`;
 // straight over the private network (Tailscale) or from this machine.
 const viaCloudflare = (req) => typeof req.headers['cf-connecting-ip'] === 'string';
 
+// Google and Discord send people back to the public address only, so their sign-in has
+// to start there too (the browser keeps the sign-in cookie per address).
+const onPublicHost = (req) => String(req.headers.host || '').toLowerCase() === PUBLIC_HOST;
+
 const clientIp = (req) => (viaCloudflare(req) ? req.headers['cf-connecting-ip'] : req.socket.remoteAddress) || 'unknown';
 
 const SECURITY_HEADERS = {
@@ -105,6 +109,6 @@ function sameOrigin(req) {
 }
 
 module.exports = {
-  PUBLIC_HOST, PUBLIC_ORIGIN, SECURITY_HEADERS, viaCloudflare, clientIp,
+  PUBLIC_HOST, PUBLIC_ORIGIN, SECURITY_HEADERS, viaCloudflare, onPublicHost, clientIp,
   send, json, fail, redirect, readJson, parseCookies, cookie, rateLimiter, sameOrigin,
 };

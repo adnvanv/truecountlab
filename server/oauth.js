@@ -39,7 +39,8 @@ const PROVIDERS = {
   },
 };
 
-const enabledProviders = () => Object.fromEntries(Object.entries(PROVIDERS).map(([k, p]) => [k, Boolean(p.id() && p.secret())]));
+// Offered only on the public address (not on the private-network one); see U.onPublicHost.
+const enabledProviders = (req) => Object.fromEntries(Object.entries(PROVIDERS).map(([k, p]) => [k, Boolean(p.id() && p.secret() && U.onPublicHost(req))]));
 const redirectUri = (provider) => `${U.PUBLIC_ORIGIN}/auth/${provider}/callback`;
 
 // Sign-ins in progress: state -> { provider, verifier, linkUserId, at }. Ten minutes to finish.
@@ -55,6 +56,7 @@ const back = (res, hash, extra) => U.redirect(res, `/#${hash}`, extra);
 function start(req, res, provider, url) {
   const p = PROVIDERS[provider];
   if (!p || !p.id() || !p.secret()) return U.fail(res, 404, 'That sign-in option is not set up.');
+  if (!U.onPublicHost(req)) return U.redirect(res, `${U.PUBLIC_ORIGIN}${url.pathname}${url.search}`);
   const linking = url.searchParams.get('mode') === 'link';
   const user = linking ? auth.currentUser(req) : null;
   if (linking && !user) return back(res, 'account?error=signin-first');
@@ -74,7 +76,7 @@ async function callback(req, res, provider, url) {
   const p = PROVIDERS[provider];
   const clearState = U.cookie(req, STATE_COOKIE, '', { maxAge: 0, path: '/auth' });
   if (!p || !p.id()) return U.fail(res, 404, 'Not found');
-  if (url.searchParams.get('error')) return back(res, 'account?error=cancelled', { 'set-cookie': clearState });
+  if (url.searchParams.get('error')) return back(res, `account?error=cancelled&provider=${provider}`, { 'set-cookie': clearState });
   const state = url.searchParams.get('state') || '';
   const flow = pending.get(state);
   pending.delete(state);
@@ -94,7 +96,7 @@ async function callback(req, res, provider, url) {
     profile = await p.profile((await r.json()).access_token);
   } catch (e) {
     console.error('oauth failed:', e.message);
-    return back(res, 'account?error=failed', { 'set-cookie': clearState });
+    return back(res, `account?error=failed&provider=${provider}`, { 'set-cookie': clearState });
   }
 
   const existing = db.prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?').get(provider, profile.subject);

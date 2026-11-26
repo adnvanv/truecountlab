@@ -269,7 +269,7 @@ async function handle(req, res, url) {
   if (p === '/api/me' && m === 'GET') { U.json(res, 200, { user: publicUser(currentUser(req)) }); return true; }
   if (p === '/api/auth/config' && m === 'GET') {
     const oauth = require('./oauth');
-    U.json(res, 200, { providers: oauth.enabledProviders(), passwordReset: mail.enabled() });
+    U.json(res, 200, { providers: oauth.enabledProviders(req), passwordReset: mail.enabled() });
     return true;
   }
   if (p === '/api/auth/signup' && m === 'POST') { await signup(req, res); return true; }

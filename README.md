@@ -49,7 +49,12 @@ DISCORD_CLIENT_SECRET=...
 RESEND_API_KEY=...            # password-reset emails
 MAIL_FROM=TrueCountLab <no-reply@truecountlab.com>
 ```
-OAuth redirect URIs: `https://truecountlab.com/auth/google/callback` and `https://truecountlab.com/auth/discord/callback`.
+OAuth redirect URIs: `https://truecountlab.com/auth/google/callback` and `https://truecountlab.com/auth/discord/callback`. Google and Discord sign-in is offered only on the public address, since that's where the providers send people back.
+
+`scripts/set-keys.sh google|discord|email` asks for the keys (secrets typed hidden), writes them to `.env`, restarts the app, and prints which sign-in options are on:
+```
+ssh -t <server> "bash ~/blackjack/scripts/set-keys.sh google"
+```
 
 `scripts/import-legacy.js` moves the old pre-accounts save file (`data/state.json`) into one account.
 
