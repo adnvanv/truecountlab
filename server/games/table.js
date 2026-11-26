@@ -11,7 +11,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
   const MAX_BET = 200;
   const BUY_IN = C.RULES.buyIn;
   const T = { bet: 15000, insurance: 10000, turn: 20000, away: 4000, check: 20000, card: 550, settle: 4000, shuffle: 2200, between: 900 };
-  const MAX_MISSED = 3; // rounds without betting before a seat is given up
+  const MAX_MISSED = 3; // rounds a dropped connection can miss before its seat is given up
   const ACTS = ['H', 'S', 'D', 'P'];
   const NAMES = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
@@ -53,7 +53,8 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     tc() { return C.tcFromCards(this.rc, this.shoe.remaining); }
     seatOf(id) { return this.seats.findIndex((s) => s && s.id === id); }
     event(text) { this.events.push(text); if (this.events.length > 6) this.events.shift(); }
-    note(seat, text, kind) { seat.notes.push({ text, kind }); if (seat.notes.length > 8) seat.notes.shift(); }
+    // kind: good | bad | warn | info | won | lost | even; cat: play | bet | check | round | info (styles the hand log).
+    note(seat, text, kind, cat = 'info') { seat.notes.push({ text, kind, cat }); if (seat.notes.length > 8) seat.notes.shift(); }
     connected(seat) { return Boolean(this.room.members.get(seat.id)?.connected); }
     live() { return this.seats.filter((s) => s && s.hands.length); }
 
@@ -107,6 +108,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         id: m.id, name: m.name, guest: m.guest, userId: m.userId,
         stack: BUY_IN, buyIns: 1, bet: null, out: false, missed: 0, hands: [], insurance: null,
         net: null, notes: [], stats: {}, pending: {}, check: null, leaving: false,
+        late: this.phase === 'betting', // sat down with the bet timer already running
       };
       this.note(this.seats[i], `Sat down with ${money(BUY_IN)} in table chips. Bet ${money(MIN)}–${money(MAX_BET)}; the ramp is $25 at TC ≤ +1, $50 at +2/+3, $75 at +4 and up.`, 'info');
       this.room.system(`${m.name} sat down.`);
@@ -157,7 +159,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     async betting() {
       for (const s of this.seats) {
         if (!s) continue;
-        s.bet = null; s.out = false; s.hands = []; s.insurance = null; s.net = null; s.check = null;
+        s.bet = null; s.out = false; s.hands = []; s.insurance = null; s.net = null; s.check = null; s.late = false;
         if (s.stack < MIN) {
           s.stack += BUY_IN; s.buyIns++;
           this.note(s, `Out of chips: rebought for ${money(BUY_IN)}.`, 'info');
@@ -173,9 +175,17 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       for (let i = 0; i < SEATS; i++) {
         const s = this.seats[i];
         if (!s || s.bet != null) continue;
+        if (this.connected(s) && !s.late) {
+          // Online but no bet when the timer ran out: give the seat up so the table isn't held.
+          this.room.tell(s.id, 'You didn’t bet in time, so you left your seat. Pick a seat to play again.');
+          this.standUp(i, `${s.name} didn’t bet in time and left the seat.`);
+          continue;
+        }
+        // Sat down late, or the connection dropped: sit this hand out and keep the seat.
         s.out = true;
         s.bet = 0;
-        if (++s.missed >= MAX_MISSED) this.standUp(i, `${s.name} was stood up after ${MAX_MISSED} rounds without a bet.`);
+        if (s.late) continue;
+        if (++s.missed >= MAX_MISSED) this.standUp(i, `${s.name} was offline for ${MAX_MISSED} hands and lost the seat.`);
       }
     }
 
@@ -313,6 +323,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         }
         s.stack += payout;
         s.net = payout - wagered;
+        this.note(s, `Round: ${s.net > 0 ? '+' : s.net < 0 ? '−' : '±'}${Math.abs(s.net)}`, s.net > 0 ? 'won' : s.net < 0 ? 'lost' : 'even', 'round');
         s.stats.hands = (s.stats.hands || 0) + 1;
         s.pending.hands = (s.pending.hands || 0) + 1;
       }
@@ -370,7 +381,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           const want = this.betTc.map((t) => C.betFor(t));
           const ok = want.includes(amt);
           this.stat(s, 'bets', ok);
-          this.note(s, ok ? `✓ Bet ${money(amt)} fits the ramp.` : `✗ The ramp says ${money(want[0])} at TC ${signed(this.betTc[0])}; you bet ${money(amt)}.`, ok ? 'good' : 'bad');
+          this.note(s, ok ? `✓ Bet ${money(amt)} fits the ramp.` : `✗ The ramp says ${money(want[0])} at TC ${signed(this.betTc[0])}; you bet ${money(amt)}.`, ok ? 'good' : 'warn', 'bet');
           this.room.changed();
           this.poke();
           return null;
@@ -387,7 +398,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           const answers = new Set(C.tcCandidates(this.rc, this.shoe.remaining).map((t) => S.insuranceCorrect(t)));
           const ok = answers.has(take);
           this.stat(s, 'decisions', ok);
-          this.note(s, `${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance. Take it at TC ≥ +3 (TC now ${signed(this.tc())}).`, ok ? 'good' : 'bad');
+          this.note(s, `${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance. Take it at TC ≥ +3 (TC now ${signed(this.tc())}).`, ok ? 'good' : 'bad', 'play');
           s.insurance = take ? Math.min(s.hands[0].bet / 2, s.stack) : 0;
           s.stack -= s.insurance;
           this.room.changed();
@@ -409,7 +420,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           this.stat(s, 'decisions', ok);
           this.note(s, ok
             ? `✓ ${NAMES[a]} on ${label}${dev ? `: ${dev.note}` : ''}`
-            : `✗ ${NAMES[a]} on ${label}. Correct: ${NAMES[main.action]}${main.dev ? ` (${main.note}, TC ${signed(this.tc())})` : ' (basic strategy)'}`, ok ? 'good' : 'bad');
+            : `✗ ${NAMES[a]} on ${label}. Correct: ${NAMES[main.action]}${main.dev ? ` (${main.note}, TC ${signed(this.tc())})` : ' (basic strategy)'}`, ok ? 'good' : 'bad', 'play');
           s.choice = a;
           this.poke();
           return null;
@@ -424,7 +435,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           const tcOk = A.tcs.includes(tc);
           this.stat(s, 'checks', rcOk && tcOk);
           s.check = { pending: false, rc, tc, rcOk, tcOk, answer: { rc: A.rc, tc: A.tcs[0], est: A.est } };
-          this.note(s, `${rcOk && tcOk ? '✓' : '✗'} Count check: running ${signed(A.rc)}, true ${signed(A.tcs[0])} (${signed(A.rc)} ÷ ${A.est} decks). You said ${signed(rc)} / ${signed(tc)}.`, rcOk && tcOk ? 'good' : 'bad');
+          this.note(s, `${rcOk && tcOk ? '✓' : '✗'} Count check: running ${signed(A.rc)}, true ${signed(A.tcs[0])} (${signed(A.rc)} ÷ ${A.est} decks). You said ${signed(rc)} / ${signed(tc)}.`, rcOk && tcOk ? 'good' : 'bad', 'check');
           this.room.changed();
           this.poke();
           return null;

@@ -180,15 +180,6 @@ try {
   alice.send({ t: 'create', kind: 'table', visibility: 'public' });
   await until(() => alice.room?.kind === 'table', 2000, 'table');
   const tcode = alice.room.code;
-  alice.send({ t: 'game', a: 'sit', seat: 0 });
-  const gina = client('Gina'); await gina.hello();
-  gina.send({ t: 'quick', kind: 'table' });
-  await until(() => gina.room?.code === tcode, 2000, 'gina at table');
-  ok(true, 'quick play finds the table with a free seat');
-  gina.send({ t: 'game', a: 'sit', seat: 0 });
-  await until(() => gina.errors.some((e) => /taken/.test(e.error)), 2000, 'seat taken');
-  ok(true, 'can’t sit in a taken seat');
-  gina.send({ t: 'game', a: 'sit', seat: 3 });
   const auto = (p) => p.ws.addEventListener('message', (e) => {
     const m = JSON.parse(e.data);
     if (m.t !== 'room' || m.room.kind !== 'table') return;
@@ -199,8 +190,18 @@ try {
     if (y.moves) p.send({ t: 'game', a: 'act', move: 'S' });
     if (y.check?.pending) p.send({ t: 'game', a: 'check', rc: 0, tc: 0 });
   });
-  auto(alice); auto(gina);
-  await until(() => alice.room.game.phase === 'settle', 20000, 'first settle');
+  auto(alice);
+  alice.send({ t: 'game', a: 'sit', seat: 0 });
+  const gina = client('Gina'); await gina.hello();
+  auto(gina);
+  gina.send({ t: 'quick', kind: 'table' });
+  await until(() => gina.room?.code === tcode, 2000, 'gina at table');
+  ok(true, 'quick play finds the table with a free seat');
+  gina.send({ t: 'game', a: 'sit', seat: 0 });
+  await until(() => gina.errors.some((e) => /taken/.test(e.error)), 2000, 'seat taken');
+  ok(true, 'can’t sit in a taken seat');
+  gina.send({ t: 'game', a: 'sit', seat: 3 });
+  await until(() => alice.room.game.phase === 'settle' && alice.room.game.seats[3]?.hands.length, 30000, 'a hand both play');
   const g1 = alice.room.game;
   ok(g1.seats[0].hands[0].result && g1.seats[3].hands[0].result, 'both seats get a result');
   ok(g1.dealer.every((c) => c.rank) && g1.dealerTotal >= 17 || g1.seats.some((s) => s && s.hands.some((h) => h.total > 21)) || true, 'dealer finishes the hand');
@@ -221,6 +222,17 @@ try {
   gina.send({ t: 'leave' });
   await until(() => !alice.room.game.seats[3], 20000, 'gina seat freed');
   ok(true, 'leaving frees the seat');
+  const hal = client('Hal'); await hal.hello();
+  hal.send({ t: 'join', code: tcode });
+  await until(() => hal.room?.code === tcode, 2000, 'hal joins');
+  hal.send({ t: 'game', a: 'sit', seat: 1 });
+  await until(() => hal.room.game.you?.seat === 1, 3000, 'hal sits');
+  await until(() => hal.msgs.some((m) => m.t === 'notice' && /didn’t bet in time/.test(m.text)), 20000, 'missed bet notice');
+  await until(() => !alice.room.game.seats[1], 3000, 'hal stood up');
+  ok(true, 'a player who doesn’t bet before the timer runs out loses the seat');
+  ok(alice.chat.some((m) => m.system && /Hal didn’t bet in time/.test(m.text)), 'the table is told why');
+  ok(alice.room.game.you.notes.some((n) => n.cat === 'round'), 'round results go in the hand log');
+  hal.ws.close();
 
   console.log('Connection limit');
   const many = []; for (let i = 0; i < 25; i++) many.push(new WebSocket(`ws://127.0.0.1:${PORT}/ws`, { headers: { origin: BASE } }));

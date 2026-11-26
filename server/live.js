@@ -137,6 +137,12 @@ class Room {
 
   system(text) { this.post({ system: true, text, at: Date.now() }); }
 
+  // A message for one player only (shown as a pop-up).
+  tell(id, text) {
+    const m = this.members.get(id);
+    if (m?.connected) send(m.conn, { t: 'notice', code: this.code, text });
+  }
+
   post(msg) {
     this.chat.push(msg);
     if (this.chat.length > CHAT_KEEP) this.chat.shift();

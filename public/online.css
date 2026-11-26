@@ -93,60 +93,91 @@
 .b-standings .place { font-size: 1.3rem; text-align: center; }
 .b-standings .rating { font-weight: 700; font-size: 0.9rem; }
 
-/* ---- shared table ---- */
-.stable { display: flex; flex-direction: column; gap: 0.7rem; }
-.st-head { display: flex; flex-direction: column; gap: 0.3rem; }
-.st-rules { font-size: 0.82rem; }
-.st-mine { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.1rem; font-size: 0.92rem; }
-.st-mine .btn { margin-left: auto; }
-.st-felt {
-  position: relative; border-radius: 22px 22px 110px 110px / 22px 22px 70px 70px; padding: 1rem 0.8rem 1.4rem;
-  background: radial-gradient(ellipse at 50% 20%, #1a6a49, #0f4a33 60%, #0a3424); border: 6px solid #4a2c17;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.35); min-height: 360px;
+/* ---- shared table: the solo table's layout (table.css), plus seats for other players ---- */
+body[data-view="online-table"] .online { max-width: none; }
+@media (min-width: 641px) {
+  body[data-view="online-table"] main { max-width: 1500px; padding: 0.6rem 1rem 0.7rem; }
 }
-.st-tray { position: absolute; top: 0.8rem; left: 0.9rem; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
-.st-tray .tray { height: 74px; }
-.st-dealer { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-height: 118px; }
-.st-dealer .zone-label, .st-name { font-weight: 700; }
-.st-total { display: inline-block; margin-left: 0.4rem; padding: 0 0.45rem; border-radius: 999px; background: rgba(0, 0, 0, 0.35); font-size: 0.8rem; font-weight: 700; }
-.st-events { text-align: center; color: var(--gold); font-size: 0.88rem; min-height: 1.3em; margin: 0.4rem 0 0.8rem; }
-.st-seats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; align-items: end; }
-.st-seat {
-  display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-height: 150px; justify-content: flex-end;
-  padding: 0.4rem 0.2rem; border-radius: 14px; border: 1px dashed rgba(255, 255, 255, 0.14); text-align: center;
+@media (max-width: 640px) {
+  body[data-view="online-table"] .topbar { display: none; }
+  body[data-view="online-table"] main { padding: 0; }
 }
-.st-seat.empty { justify-content: center; }
-.st-seat.me { border: 1px solid rgba(132, 200, 255, 0.5); background: rgba(132, 200, 255, 0.06); }
-.st-seat.turn { border: 1px solid var(--gold); box-shadow: 0 0 0 2px rgba(227, 188, 95, 0.35); }
-.st-hands { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; }
-.st-hand { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.2rem; border-radius: 10px; }
-.st-hand.active { background: rgba(227, 188, 95, 0.16); }
-.st-hand .result-bubble { top: -0.9rem; font-size: 0.72rem; padding: 0.1rem 0.5rem; }
-.st-hand.win .result-bubble { background: var(--good); color: #062614; }
-.st-hand.lose .result-bubble { background: var(--bad); color: #2b0703; }
-.st-hand.push .result-bubble { background: #d7d7d7; color: #222; }
-.st-hand .hand > .card + .card { margin-left: -28px; }
-.st-dealer .hand > .card + .card { margin-left: -10px; }
-.st-hand-meta { display: flex; align-items: center; gap: 0.3rem; }
-.st-sub { font-size: 0.78rem; }
-.st-chips { display: flex; align-items: center; gap: 0.25rem; }
-.st-chips .pile { position: relative; width: 22px; height: 22px; }
-.st-chips .pchip { position: absolute; left: 0; bottom: calc(var(--i) * 3px); width: 22px; height: 22px; }
-.st-chips .chip-amt { font-size: 0.75rem; font-weight: 700; }
-.st-dock { min-height: 118px; display: flex; justify-content: center; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.8rem; }
-.st-controls { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; width: 100%; }
-.st-controls .bet-quick { gap: 0.9rem; padding-bottom: 1rem; }
+.st-barin { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.8rem; font-size: 0.85rem; }
+.st-barin .btn.sm { padding: 0.25rem 0.65rem; }
+.st-code { color: var(--gold); letter-spacing: 0.12em; }
+.st-barin .st-rules { font-size: 0.75rem; }
+.online-table .hud-btns { display: flex; align-items: center; gap: 0.5rem; }
+@media (min-width: 1051px) { .online-table .side .feedback { flex: 1 1 0; min-height: 90px; } }
+.online-table .side .feedback:empty::after { content: "Your bets, plays and count checks are graded here. Only you see this."; color: var(--dim); font-size: 0.82rem; }
+
+/* Players and chat: in the side column on wide screens, a pop-out panel otherwise. */
+.table-chat {
+  display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; flex: 1.3 1 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 0.7rem;
+}
+.table-chat .tc-head { display: flex; align-items: center; justify-content: space-between; }
+.table-chat h3 { margin: 0; font: 600 0.68rem system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.table-chat .room-members { max-height: 7rem; overflow-y: auto; font-size: 0.88rem; }
+.table-chat .chat-list { height: auto; flex: 1; min-height: 70px; margin: 0; }
+.table-chat .chat-note { margin: 0; }
+.tc-close { display: none; }
+.chat-toggle .unread { margin-left: 0.35rem; background: var(--bad); color: #fff; border-radius: 999px; padding: 0 0.42rem; font-size: 0.72rem; font-weight: 800; }
+.chat-toggle .unread:empty { display: none; }
+.st-barin .chat-toggle { display: none; }
+@media (max-width: 1050px) {
+  .st-barin .chat-toggle { display: inline-flex; }
+  .online-table .table-chat {
+    display: none; position: fixed; z-index: 60; right: 0.6rem; bottom: calc(var(--tab-h, 0px) + 0.6rem);
+    width: min(380px, calc(100vw - 1.2rem)); height: min(72dvh, 560px);
+    background: #0b2a1f; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  }
+  .online-table .table-chat.open { display: flex; }
+  .tc-close { display: inline-flex; }
+}
+
+/* Other players: small cards, their bet, stack and what they're doing. */
+.online-table .seat.other .slot { --cw: var(--cw-other); }
+.online-table .other-hands { display: flex; gap: 0.3rem; }
+.online-table .other-hand { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.15rem; border-radius: 10px; }
+.online-table .other-hand.active { background: rgba(227, 188, 95, 0.18); box-shadow: 0 0 0 2px rgba(227, 188, 95, 0.55); }
+.online-table .other-meta { display: flex; align-items: center; gap: 0.25rem; min-height: 1.35rem; font-size: 0.8rem; }
+.online-table .seat.other .zone-label { margin: 0; gap: 0.2rem; }
+.online-table .o-name { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.online-table .o-sub { font-size: 0.72rem; color: rgba(255, 255, 255, 0.65); text-align: center; white-space: nowrap; }
+.online-table .seat.other.empty { opacity: 0.65; }
+.online-table .sit-btn { margin-top: 0.2rem; }
+.online-table .seat.me.watching { gap: 0.3rem; }
+@media (min-width: 641px) {
+  /* Lift the side seats clear of the felt's curved corners. */
+  .online-table .seats .others { padding-bottom: 1.6rem; }
+}
+@media (min-width: 641px) and (max-width: 1050px) {
+  .online-table .side .hud-info { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .online-table .side .hud-info .stat:first-child { grid-column: auto; }
+  .online-table .hud-btns { flex-direction: column; align-items: stretch; gap: 0.3rem; }
+}
+
+/* The dock: the latest table event, a prompt with its timer, then your controls. */
+.st-event { text-align: center; color: var(--gold); font-size: 0.85rem; min-height: 1.25em; margin-bottom: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.online-table .controls { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .st-prompt { display: flex; align-items: center; gap: 0.8rem; font-weight: 700; flex-wrap: wrap; justify-content: center; }
-.st-msg { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.st-msg { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.6rem 0; }
 .st-timer { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; color: var(--muted); }
-.st-timebar { width: 90px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.st-timebar { display: inline-block; width: 90px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .st-timebar i { display: block; height: 100%; width: 100%; background: var(--gold); transition: width 0.2s linear; }
-.st-notes { display: flex; flex-direction: column; gap: 0.3rem; }
-.st-notes .fb-line { padding: 0.35rem 0.6rem; border-radius: 8px; background: var(--panel); font-size: 0.88rem; opacity: 0.75; }
-.st-notes .fb-line.latest { opacity: 1; }
-.st-notes .fb-line.good { border-left: 3px solid var(--good); }
-.st-notes .fb-line.bad { border-left: 3px solid var(--bad); }
-.st-notes .fb-line.info { border-left: 3px solid var(--info); }
+.online-table .check-title { display: flex; align-items: center; gap: 0.6rem; }
+@media (max-width: 640px) {
+  .st-event { font-size: 0.75rem; margin-bottom: 0.15rem; }
+  .online-table .st-prompt { font-size: 0.85rem; }
+  .online-table .st-msg { padding: 0.3rem 0; font-size: 0.85rem; }
+  .online-table .m-count { font-size: 0.78rem; }
+  .online-table .o-name { max-width: 7ch; }
+  /* Your hand shows its total, so leave it a little more room than the solo table. */
+  .table-view.online-table { --cw-me: min(15.5cqh, 88px); }
+  .online-table .seat.me .zone-label.you { display: none; }
+  .online-table .my-hand .hand-meta { position: absolute; top: -0.35rem; right: -0.35rem; z-index: 4; margin: 0; min-height: 0; }
+  .online-table .seat.me.watching .zone-label.you { display: flex; }
+}
 
 @media (max-width: 900px) {
   .room-body { grid-template-columns: 1fr; }
@@ -156,15 +187,6 @@
   .ol-cards { grid-template-columns: 1fr; }
   .ol-rooms td:nth-child(2) { display: none; }
   .b-tc { flex-direction: column; text-align: center; }
-  .st-felt { padding: 0.7rem 0.3rem 1rem; border-width: 4px; min-height: 0; }
-  .st-tray { display: none; }
-  .st-seats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .st-seat { min-height: 120px; }
-  .st-mine .btn { margin-left: 0; }
-  /* Keep your controls in reach above the tab bar while the table scrolls. */
-  .st-dock { position: sticky; bottom: calc(var(--tab-h, 64px) + 6px); z-index: 6; min-height: 0; background: rgba(4, 22, 15, 0.96); box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35); }
-  .st-dealer { min-height: 96px; }
-  .st-rules { display: none; }
   .b-standings li { grid-template-columns: 2rem 1fr 3.4rem; }
   .b-standings li > :nth-child(4), .b-standings li > :nth-child(5) { grid-column: 2 / -1; font-size: 0.82rem; }
 }

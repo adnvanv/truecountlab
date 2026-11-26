@@ -1,6 +1,7 @@
 // Online: the lobby (quick play, private rooms, open rooms, leaderboards) and the room
 // screen (a count battle or a shared table, the players and the chat).
 import { h, head, toast } from '../ui.js';
+import { RULES } from '../cards.js';
 import { currentUser } from '../store.js';
 import * as online from '../online.js';
 import { battleUI } from './battle.js';
@@ -20,7 +21,7 @@ const roomFromHash = () => (new URLSearchParams(location.hash.split('?')[1] || '
 const setHash = (code) => history.replaceState(null, '', code ? `#play?room=${code}` : '#play');
 const inviteLink = (code) => `${location.origin}/#play?room=${code}`;
 
-export function mount(root) {
+export function mount(root, ctx) {
   let alive = true;
   let room = null; // latest room state
   let lobby = { rooms: [], online: 0 };
@@ -31,6 +32,8 @@ export function mount(root) {
   let notice = null;
   let chatLog = [];
   let roomCode = null;
+  let chatPanel = null; // the shared table's players-and-chat panel
+  let unread = 0;
 
   const lobbyEl = h('div', { class: 'online-lobby' });
   const roomEl = h('div', { class: 'online-room' });
@@ -124,11 +127,27 @@ export function mount(root) {
     if (!room) return;
     if (gameKind !== room.kind) {
       gameUI?.destroy();
-      gameUI = room.kind === 'battle' ? battleUI() : tableUI();
       gameKind = room.kind;
-      roomEl.replaceChildren(roomHeader, h('div', { class: 'room-body' }, h('div', { class: 'room-game' }, gameUI.el), side));
+      if (room.kind === 'battle') {
+        chatPanel = null;
+        gameUI = battleUI();
+        side.replaceChildren(
+          h('div', { class: 'panel' }, h('h3', {}, 'Players'), membersEl),
+          h('div', { class: 'panel room-chat' }, h('h3', {}, 'Chat'), chatList, chatForm, chatNote()));
+        roomEl.replaceChildren(roomHeader, h('div', { class: 'room-body' }, h('div', { class: 'room-game' }, gameUI.el), side));
+        document.body.dataset.view = 'play';
+      } else {
+        // The shared table takes the whole window like the solo table; players and chat
+        // sit in its side column (a pop-out panel on narrower screens).
+        chatPanel = h('div', { class: 'table-chat' },
+          h('div', { class: 'tc-head' }, h('h3', {}, 'Players and chat'), h('button', { class: 'btn sm ghost tc-close', onclick: () => toggleChat(false) }, 'Close')),
+          membersEl, chatList, chatForm, chatNote());
+        gameUI = tableUI({ ctx, bar: tableBar(), chat: chatPanel, chatButton, onLeave: leaveRoom });
+        roomEl.replaceChildren(gameUI.el);
+        document.body.dataset.view = 'online-table';
+      }
     }
-    drawHeader();
+    if (room.kind === 'battle') drawHeader();
     drawMembers();
     gameUI.update(room);
   }
@@ -146,10 +165,43 @@ export function mount(root) {
       if (online.send({ t: 'chat', text })) chatInput.value = '';
     },
   }, chatInput, h('button', { class: 'btn sm', type: 'submit' }, 'Send'));
-  const side = h('aside', { class: 'room-side' },
-    h('div', { class: 'panel' }, h('h3', {}, 'Players'), membersEl),
-    h('div', { class: 'panel room-chat' }, h('h3', {}, 'Chat'), chatList, chatForm,
-      h('p', { class: 'muted small' }, 'Be kind. Chat isn’t saved. Click a name to mute it.')));
+  const side = h('aside', { class: 'room-side' });
+  const chatNote = () => h('p', { class: 'muted small chat-note' }, 'Be kind. Chat isn’t saved. Click a name to mute it.');
+
+  const copyLink = () => h('button', {
+    class: 'btn sm', onclick: async () => {
+      const link = inviteLink(room.code);
+      try { await navigator.clipboard.writeText(link); toast('Invite link copied.'); } catch { prompt('Copy this invite link:', link); }
+    },
+  }, 'Copy invite link');
+
+  // The shared table's top line: room, code, invite link, chat (narrow screens) and leave.
+  function tableBar() {
+    return h('div', { class: 'st-barin' },
+      h('strong', {}, 'Shared table'),
+      h('span', { class: 'muted' }, room.visibility === 'private' ? 'Private room' : 'Public room'),
+      h('span', {}, h('span', { class: 'muted' }, 'Code '), h('strong', { class: 'mono st-code' }, room.code)),
+      copyLink(),
+      chatButton('btn sm'),
+      h('button', { class: 'btn sm ghost', onclick: leaveRoom }, 'Leave room'),
+      h('span', { class: 'muted st-rules' }, RULES.text));
+  }
+
+  // Opens the players-and-chat panel on narrow screens; shows how many messages are unread.
+  function chatButton(cls) {
+    const phone = cls.includes('m-count');
+    return h('button', { class: `${cls} chat-toggle`, onclick: () => toggleChat() },
+      h('span', {}, phone ? `Room ${room?.code || ''} · Chat` : 'Chat'),
+      h('span', { class: 'unread' }, unread ? String(unread) : ''));
+  }
+  function syncUnread() {
+    for (const b of roomEl.querySelectorAll('.chat-toggle .unread')) b.textContent = unread ? String(unread) : '';
+  }
+  function toggleChat(open = !chatPanel?.classList.contains('open')) {
+    if (!chatPanel) return;
+    chatPanel.classList.toggle('open', open);
+    if (open) { unread = 0; syncUnread(); chatList.scrollTop = chatList.scrollHeight; }
+  }
 
   function drawHeader() {
     const link = inviteLink(room.code);
@@ -214,7 +266,10 @@ export function mount(root) {
     gameUI?.destroy();
     gameUI = null;
     gameKind = null;
+    chatPanel = null;
+    unread = 0;
     chatLog = [];
+    document.body.dataset.view = 'play';
     roomEl.replaceChildren();
     roomEl.hidden = true;
     lobbyEl.hidden = false;
@@ -243,7 +298,10 @@ export function mount(root) {
       chatLog.push(m.msg);
       if (chatLog.length > 100) chatLog.shift();
       drawChat();
+      const hidden = chatPanel && !chatPanel.classList.contains('open') && matchMedia('(max-width: 1050px)').matches;
+      if (hidden && !m.msg.system && m.msg.id !== room?.youId && !muted.has(m.msg.id)) { unread++; syncUnread(); }
     }),
+    online.on('notice', (m) => toast(m.text)),
     online.on('left', (m) => { if (room && (!m.code || m.code === room.code)) exitRoom(m.reason); }),
     online.on('noRoom', (m) => exitRoom(m.error)),
     online.on('error', (m) => toast(m.error)),

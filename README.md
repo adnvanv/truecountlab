@@ -29,7 +29,7 @@ The home screen has a **ready-to-play checklist** that unlocks once all four gat
 ## Online
 **Play online** (`#play`) has live multiplayer over WebSockets:
 - **Count battles** for up to 8 players. Everyone gets the same question at the same moment: running count (cards flash by, faster each round), true count (a running count and a discard tray), or play the hand (deviations included). Right answers score 100 plus up to 100 for speed. The host picks 6, 9 or 12 rounds and which round types.
-- **Shared tables** for up to 5 players at one 6-deck shoe, same rules as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately for each player.
+- **Shared tables** for up to 5 players at one 6-deck shoe, same rules and full-size layout as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately in your hand log. If the bet timer (15s) runs out while you're connected, you leave the seat; someone who sits down mid-bet or drops offline just sits the hand out.
 - **Rooms:** quick play joins an open public room or starts one; private rooms are joined by a 6-letter code or invite link. The host can start games, change battle settings and remove players.
 - **Chat** in every room: 200 characters, 5 messages per 10 seconds, slurs and strong profanity masked, mute per player. Never saved.
 - **Leaderboards** (signed-in players only): battle rating (Elo, moves only when two or more signed-in players battle), wins and accuracy, and shared-table play and count-check accuracy.

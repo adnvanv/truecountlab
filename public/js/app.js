@@ -46,7 +46,7 @@ const ctx = {
 
 const nav = document.getElementById('nav');
 const view = document.getElementById('view');
-nav.append(...VIEWS.filter((v) => !v.hidden).map((v) => h('a', { href: `#${v.id}`, 'data-id': v.id }, h('span', { class: 'num' }, v.n || ''), v.label)));
+nav.append(...VIEWS.filter((v) => !v.hidden).map((v) => h('a', { href: `#${v.id}`, 'data-id': v.id }, v.label)));
 
 // ---- phone navigation: bottom tab bar + bottom sheets ---------------------
 const DRILLS = [
