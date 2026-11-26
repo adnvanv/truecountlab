@@ -29,10 +29,10 @@ The home screen has a **ready-to-play checklist** that unlocks once all four gat
 ## Online
 **Play online** (`#play`) has live multiplayer over WebSockets:
 - **Count battles** for up to 8 players. Everyone gets the same question at the same moment: running count (cards flash by, faster each round), true count (a running count and a discard tray), or play the hand (deviations included). Right answers score 100 plus up to 100 for speed. The host picks 6, 9 or 12 rounds and which round types.
-- **Shared tables** for up to 5 players at one 6-deck shoe, same rules and full-size layout as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately in your hand log. If the bet timer (15s) runs out while you're connected, you leave the seat; someone who sits down mid-bet or drops offline just sits the hand out.
+- **Shared tables** for up to 5 players at one 6-deck shoe, same rules and full-size layout as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately in your hand log. If the bet timer (15s) runs out while you're connected, you leave the seat; someone who sits down mid-bet or drops offline just sits the hand out. Letting a timer run out is graded as what happens (a turn stands, insurance is declined, a count check is a miss), so waiting can't dodge a hard call. Moves are only taken while the table is waiting for one, never while a card is still being dealt.
 - **Rooms:** quick play joins an open public room or starts one; private rooms are joined by a 6-letter code or invite link. The host can start games, change battle settings and remove players.
 - **Chat** in every room: 200 characters, 5 messages per 10 seconds, slurs and strong profanity masked, mute per player. Never saved.
-- **Leaderboards** (signed-in players only): battle rating (Elo, moves only when two or more signed-in players battle), wins and accuracy, and shared-table play and count-check accuracy.
+- **Leaderboards** (signed-in players only): battle rating (Elo, moves only when two or more signed-in players battle), wins (outright first place; a tie for first isn't a win) and accuracy, and shared-table play and count-check accuracy.
 
 Guests can play everything with a nickname; only signed-in players are rated or stored. The server deals, keeps the clock and grades with the same `cards.js` and `strategy.js` the browser uses. Nothing about a round is sent before it's on screen.
 
@@ -74,7 +74,10 @@ node --disable-warning=ExperimentalWarning server.js   # http://127.0.0.1:3040
 ```
 It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
 
-`node scripts/test-live.mjs` runs the online-play tests against a throwaway server (`LIVE_TIME_SCALE` speeds up the game clocks there).
+Checks (no dependencies, Node 22+):
+- `node scripts/test-games.mjs`: the online games' rules, in-process with stacked shoes. Covers table payouts (blackjack, insurance, doubles, splits, split aces, S17), timers, seats, count keeping, battle scoring and round generation, and ratings.
+- `node scripts/test-live.mjs`: end to end against a throwaway server. Covers guests and accounts, battles, the lobby, chat, kicks, shared tables, connection limits and the WebSocket protocol. `LIVE_TIME_SCALE` speeds up the game clocks there.
+- `node scripts/check-null-text.js`: finds places where the page could print "null" or "false" as text.
 
 Scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of everything in `public/`. Each deploy changes every asset URL, so browsers and Cloudflare never keep running old code; with `NODE_ENV=production` those URLs are cached for a year.
 

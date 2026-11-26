@@ -79,6 +79,8 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
   }
 
   const me = () => (g.you ? g.seats[g.you.seat] : null);
+  // The server only lets you stand up between hands (or while you're not in this one).
+  const canLeaveSeat = () => !me()?.hands.length || ['idle', 'betting', 'settle', 'check'].includes(g.phase);
 
   function sounds() {
     if (g.phase === 'shuffle' && lastPhase !== 'shuffle') sfx.shuffle();
@@ -118,7 +120,10 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
         stat('Hands', y ? String(st.hands || 0) : '—')),
       h('div', { class: 'hud-btns' },
         soundBtn('btn ghost'),
-        y ? h('button', { class: 'btn sm ghost', onclick: () => online.game('stand') }, 'Leave seat') : null));
+        y ? h('button', {
+          class: 'btn sm ghost', disabled: !canLeaveSeat(), title: canLeaveSeat() ? 'Stand up and watch' : 'You can leave your seat once this hand is over',
+          onclick: () => online.game('stand'),
+        }, 'Leave seat') : null));
     mhud.replaceChildren(
       h('div', { class: 'm-stack' }, h('span', { class: 'k' }, y ? 'Chips' : 'Watching'),
         h('span', { class: 'v' }, y ? money(y.stack) : 'Pick a seat'),
@@ -269,7 +274,9 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     }
     if (y.check && g.phase === 'check') {
       const c = y.check;
-      return controls.replaceChildren(h('div', { class: 'st-msg' }, c.missed ? 'Time ran out on the count check.' : h('span', {},
+      return controls.replaceChildren(h('div', { class: 'st-msg' }, c.missed
+        ? h('span', { class: 'bad' }, `✗ Time ran out. Running ${signed(c.answer.rc)}, true ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`)
+        : h('span', {},
         h('span', { class: c.rcOk ? 'good' : 'bad' }, `${c.rcOk ? '✓' : '✗'} Running ${signed(c.answer.rc)}`), ' · ',
         h('span', { class: c.tcOk ? 'good' : 'bad' }, `${c.tcOk ? '✓' : '✗'} True ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`))));
     }

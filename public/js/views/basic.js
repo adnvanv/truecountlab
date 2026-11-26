@@ -136,7 +136,7 @@ export function mount(root, ctx) {
     const label = `${handLabel(sc.cards)} vs ${upLabel(sc.up)}`;
     result.replaceChildren(
       h('div', { class: `verdict ${ok ? 'good' : 'bad'}` }, ok ? `✓ ${ACTIONS[a]}` : `✗ ${label}: ${CODE_TEXT[b.code]}`, h('span', { class: 'muted' }, ` · ${secs(ms)}`)),
-      ok ? null : h('div', { class: 'muted' }, `You chose ${ACTIONS[a]}.`),
+      ...(ok ? [] : [h('div', { class: 'muted' }, `You chose ${ACTIONS[a]}.`)]),
       h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: next }, 'Next', h('kbd', {}, 'Enter'))));
     renderRecord();
     if (ok && cfg.auto) autoTimer = setTimeout(next, 700);

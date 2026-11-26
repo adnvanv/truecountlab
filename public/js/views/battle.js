@@ -83,7 +83,10 @@ export function battleUI() {
 
   function drawStage() {
     const r = g.round;
-    const key = `${phaseKey}:${g.phase === 'show' ? r.index : ''}:${g.phase === 'waiting' ? JSON.stringify(g.settings) + isHost() + (g.autoStartIn != null) : ''}:${g.phase === 'final' ? JSON.stringify(g.final) : ''}`;
+    // Redraw when anything shown changes: the card, settings, who hosts, how many are here.
+    const here = room.members.filter((m) => m.connected).length;
+    const lobbyish = g.phase === 'waiting' || g.phase === 'final';
+    const key = `${phaseKey}:${g.phase === 'show' ? r.index : ''}:${lobbyish ? `${JSON.stringify(g.settings)}:${isHost()}:${here}:${g.autoStartIn != null}` : ''}:${g.phase === 'final' ? JSON.stringify(g.final) : ''}`;
     if (key === stageKey) return;
     stageKey = key;
     if (g.phase === 'waiting') return stage.replaceChildren(waiting());

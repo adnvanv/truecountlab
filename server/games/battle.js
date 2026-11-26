@@ -60,7 +60,9 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       up = d.up;
       tc = d.tc + C.pick([-2, -1, 0, 0, 1, 2]);
     } else {
-      cards = [C.cardForValue(2 + C.randInt(10)), C.cardForValue(2 + C.randInt(10))];
+      // Any two cards except a blackjack, which has no decision to make.
+      do cards = [C.cardForValue(2 + C.randInt(10)), C.cardForValue(2 + C.randInt(10))];
+      while (S.isBlackjack(cards));
       up = 2 + C.randInt(10);
       tc = C.randInt(9) - 4;
     }
@@ -116,10 +118,15 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     onJoin() { this.checkAutoStart(); }
     onLeave(m) {
       this.checkAutoStart();
-      if (this.playing && ![...this.players.keys()].some((id) => this.room.members.get(id)?.connected)) this.abort();
+      if (this.playing && ![...this.players.keys()].some((id) => this.room.members.has(id))) this.abort();
       else if (this.phase === 'answer' && this.players.has(m.id)) this.maybeEndEarly();
     }
-    onDisconnect(m) { this.onLeave(m); }
+    // A dropped connection (a page reload, a phone locking) keeps its place: the battle
+    // only stops if every player actually leaves the room.
+    onDisconnect(m) {
+      this.checkAutoStart();
+      if (this.phase === 'answer' && this.players.has(m.id)) this.maybeEndEarly();
+    }
     onReconnect() { this.checkAutoStart(); }
 
     abort() {
@@ -246,10 +253,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         let value = msg.value;
         if (r.type === 'play') {
           if (!['H', 'S', 'D', 'P'].includes(value)) return null;
-        } else {
-          value = Number(value);
-          if (!Number.isInteger(value) || Math.abs(value) > 99) return null;
-        }
+        } else if (typeof value !== 'number' || !Number.isInteger(value) || Math.abs(value) > 99) return null;
         r.answers.set(m.id, { value, ms: Date.now() - this.openedAt });
         this.room.changed();
         this.maybeEndEarly();

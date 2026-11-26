@@ -240,6 +240,78 @@ try {
   ok(outcomes.includes('refused') && outcomes.filter((o) => o === 'open').length <= 20, `one address can't open unlimited connections (${outcomes.filter((o) => o === 'open').length} opened)`);
   many.forEach((w) => w.close());
 
+  console.log('WebSocket protocol');
+  const net = await import('node:net');
+  const crypto = await import('node:crypto');
+  // A raw connection, so we can send frames a browser never would.
+  async function raw() {
+    const sock = net.connect(PORT, '127.0.0.1');
+    await new Promise((r) => sock.once('connect', r));
+    const key = crypto.randomBytes(16).toString('base64');
+    sock.write(`GET /ws HTTP/1.1\r\nHost: 127.0.0.1:${PORT}\r\nOrigin: ${BASE}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`);
+    let buf = Buffer.alloc(0);
+    sock.on('data', (d) => { buf = Buffer.concat([buf, d]); });
+    await until(() => buf.includes('\r\n\r\n'), 2000, 'handshake');
+    const head = buf.subarray(0, buf.indexOf('\r\n\r\n') + 4).toString();
+    buf = buf.subarray(head.length);
+    const frames = () => { // parse whatever server frames have arrived
+      const out = []; let b = buf;
+      while (b.length >= 2) {
+        let len = b[1] & 0x7f; let off = 2;
+        if (len === 126) { len = b.readUInt16BE(2); off = 4; }
+        if (b.length < off + len) break;
+        out.push({ op: b[0] & 0x0f, data: b.subarray(off, off + len) });
+        b = b.subarray(off + len);
+      }
+      return out;
+    };
+    const send = (op, payload, { fin = true, mask = true } = {}) => {
+      const p = Buffer.from(payload);
+      const len = p.length < 126 ? Buffer.from([p.length | (mask ? 0x80 : 0)]) : Buffer.concat([Buffer.from([126 | (mask ? 0x80 : 0)]), Buffer.from([p.length >> 8, p.length & 255])]);
+      const m = crypto.randomBytes(4);
+      const body = mask ? Buffer.from(p.map((x, i) => x ^ m[i & 3])) : p;
+      sock.write(Buffer.concat([Buffer.from([(fin ? 0x80 : 0) | op]), len, mask ? m : Buffer.alloc(0), body]));
+    };
+    const closed = new Promise((r) => sock.once('close', r));
+    return { head, frames, send, sock, closed };
+  }
+  const closeCode = (c) => { const f = c.frames().find((x) => x.op === 8); return f && f.data.length >= 2 ? f.data.readUInt16BE(0) : null; };
+  {
+    const c = await raw();
+    ok(/^HTTP\/1\.1 101/.test(c.head), 'handshake answers 101 Switching Protocols');
+    const hello = JSON.stringify({ t: 'hello', guestToken: 'raw_client_token_12345', guestName: 'RawOne' });
+    c.send(1, hello.slice(0, 10), { fin: false });
+    c.send(0, hello.slice(10));
+    await until(() => c.frames().some((f) => f.op === 1 && f.data.toString().includes('welcome')), 2000, 'fragmented hello');
+    ok(true, 'a message split across frames is put back together');
+    c.send(9, 'hi');
+    await until(() => c.frames().some((f) => f.op === 10 && f.data.toString() === 'hi'), 2000, 'pong');
+    ok(true, 'ping gets a pong with the same data');
+    c.send(1, 'x'.repeat(17000));
+    await c.closed;
+    ok(closeCode(c) === 1009, 'a message over 16 KB closes the connection (1009)');
+  }
+  {
+    const c = await raw();
+    c.send(2, 'binary');
+    await c.closed;
+    ok(closeCode(c) === 1003, 'binary frames are refused (1003)');
+  }
+  {
+    const c = await raw();
+    c.send(1, '{"t":"hello"}', { mask: false });
+    await c.closed;
+    ok(closeCode(c) === 1002, 'unmasked frames from a browser are refused (1002)');
+  }
+  {
+    const c = await raw();
+    c.send(1, 'not json at all');
+    c.send(1, JSON.stringify({ t: 'create', kind: 'battle' }));
+    await until(() => c.frames().some((f) => f.op === 1 && f.data.toString().includes('Say hello first')), 2000, 'hello first');
+    ok(true, 'bad JSON is ignored, and nothing works before hello');
+    c.sock.destroy();
+  }
+
   console.log('Server log errors');
   ok(!/Error|failed/i.test(serverLog.replace(/ExperimentalWarning/g, '')), 'no errors in the server log');
 } catch (e) {

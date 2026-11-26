@@ -88,7 +88,7 @@ export function mount(root, ctx) {
       h('div', { class: `verdict ${ok ? 'good' : 'bad'}` }, ok ? `✓ ${signed(ans)}` : `✗ You said ${signed(guess)} — it's ${signed(ans)}`,
         h('span', { class: 'muted' }, ` · ${secs(ms)}`)),
       h('div', { class: 'muted' }, `${prob.remainingCards} cards left ≈ ${prob.est} decks. ${signed(prob.rc)} ÷ ${prob.est} = ${(prob.rc / prob.est).toFixed(2)} → round down → ${signed(ans)}`),
-      err ? h('div', { class: 'warn' }, `Likely mistake: ${TC_ERRORS[err]}`) : null,
+      ...(err ? [h('div', { class: 'warn' }, `Likely mistake: ${TC_ERRORS[err]}`)] : []),
       h('div', { class: 'row' }, btn));
     btn.focus();
     renderRecord();

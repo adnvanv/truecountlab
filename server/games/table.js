@@ -15,7 +15,11 @@ module.exports = ({ cards: C, strategy: S }, records) => {
   const ACTS = ['H', 'S', 'D', 'P'];
   const NAMES = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
-  const money = (n) => `${n < 0 ? '−' : ''}$${Math.abs(n)}`;
+  // $25, $37.50, −$12.50 (blackjack pays 3:2, so half dollars happen).
+  const money = (n, sign = false) => {
+    const a = Math.abs(n);
+    return `${n < 0 ? '−' : sign && n > 0 ? '+' : sign ? '±' : ''}$${a % 1 ? a.toFixed(2) : a}`;
+  };
 
   const plain = (c) => (c.down ? { down: true } : { rank: c.rank, suit: c.suit });
 
@@ -242,23 +246,62 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       for (const s of players) s.insurance = null;
       this.room.changed();
       await this.wait(T.insurance, () => players.every((s) => s.insurance != null || !this.connected(s) || s.leaving));
-      for (const s of players) if (s.insurance == null) s.insurance = 0; // no answer: no insurance, not graded
+      for (const s of players) {
+        if (s.insurance != null) continue;
+        // Letting the timer run out declines insurance, and is graded as declining
+        // (so waiting it out can't dodge a hard call). Offline players aren't graded.
+        if (this.connected(s) && !s.leaving) {
+          this.note(s, 'Time ran out: no insurance.', 'info');
+          this.gradeInsurance(s, false);
+        }
+        s.insurance = 0;
+      }
+    }
+
+    gradeInsurance(s, take) {
+      const answers = new Set(C.tcCandidates(this.rc, this.shoe.remaining).map((t) => S.insuranceCorrect(t)));
+      const ok = answers.has(take);
+      this.stat(s, 'decisions', ok);
+      this.note(s, `${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance. Take it at TC ≥ +3 (TC now ${signed(this.tc())}).`, ok ? 'good' : 'bad', 'play');
+    }
+
+    // Grade a play against basic strategy and the deviations, at any true count a careful
+    // player could reach from the tray.
+    gradePlay(s, hd, a) {
+      const o = this.optsFor(s, hd);
+      const up = S.upValue(this.dealer[0]);
+      const results = C.tcCandidates(this.rc, this.shoe.remaining).map((t) => S.correctAction(hd.cards, up, o, t));
+      const ok = results.some((r) => r.action === a);
+      const label = `${S.handLabel(hd.cards)} vs ${S.upLabel(up)}`;
+      const main = results[0];
+      const dev = results.find((r) => r.dev);
+      this.stat(s, 'decisions', ok);
+      this.note(s, ok
+        ? `✓ ${NAMES[a]} on ${label}${dev ? `: ${dev.note}` : ''}`
+        : `✗ ${NAMES[a]} on ${label}. Correct: ${NAMES[main.action]}${main.dev ? ` (${main.note}, TC ${signed(this.tc())})` : ' (basic strategy)'}`, ok ? 'good' : 'bad', 'play');
     }
 
     async turnFor(s, h) {
       this.phase = 'play';
       this.turn = { seat: this.seats.indexOf(s), hand: h };
       s.choice = null;
+      s.awaiting = true; // moves are only taken while the table is actually waiting for one
       this.room.changed();
       const away = !this.connected(s) || s.leaving;
       // Someone who's offline when their turn comes gets a few seconds to come back.
       await this.wait(away ? T.away : T.turn, () => s.choice != null || s.leaving);
+      s.awaiting = false;
       const hd = s.hands[h];
       const a = s.choice;
       s.choice = null;
       if (!a) {
+        // The hand stands. If you were here and let the clock run out, that's graded as
+        // standing, so timing out can't dodge a hard decision.
+        if (!s.leaving && this.connected(s)) {
+          this.note(s, 'Time ran out: your hand stood.', 'info');
+          this.gradePlay(s, hd, 'S');
+        }
         hd.done = true;
-        if (!s.leaving) this.note(s, 'Time ran out: your hand stood.', 'info');
         return;
       }
       if (a === 'H') {
@@ -323,11 +366,11 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         }
         s.stack += payout;
         s.net = payout - wagered;
-        this.note(s, `Round: ${s.net > 0 ? '+' : s.net < 0 ? '−' : '±'}${Math.abs(s.net)}`, s.net > 0 ? 'won' : s.net < 0 ? 'lost' : 'even', 'round');
+        this.note(s, `Round: ${money(s.net, true)}`, s.net > 0 ? 'won' : s.net < 0 ? 'lost' : 'even', 'round');
         s.stats.hands = (s.stats.hands || 0) + 1;
         s.pending.hands = (s.pending.hands || 0) + 1;
       }
-      const totals = players.map((s) => `${s.name} ${s.net > 0 ? '+' : s.net < 0 ? '−' : '±'}$${Math.abs(s.net)}`);
+      const totals = players.map((s) => `${s.name} ${money(s.net, true)}`);
       this.event(`Dealer ${d.total > 21 ? 'busts' : dBJ ? 'blackjack' : d.total}. ${totals.join(' · ')}`);
       this.phase = 'settle';
       this.deadline = Date.now() + ms(T.settle);
@@ -347,7 +390,17 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         this.turn = null;
         this.room.changed();
         await this.wait(T.check, () => checkers.every((s) => !s.check?.pending || !this.seats.includes(s) || !this.connected(s)));
-        for (const s of checkers) if (s.check?.pending) s.check = { pending: false, missed: true };
+        const A = this.checkAnswer;
+        for (const s of checkers) {
+          if (!s.check?.pending) continue;
+          // No answer in time counts as a miss (so skipping a check can't protect your score).
+          const here = this.seats.includes(s) && this.connected(s);
+          if (here) {
+            this.stat(s, 'checks', false);
+            this.note(s, `✗ Count check: time ran out. Running ${signed(A.rc)}, true ${signed(A.tcs[0])} (${signed(A.rc)} ÷ ${A.est} decks).`, 'bad', 'check');
+          }
+          s.check = { pending: false, missed: true, answer: { rc: A.rc, tc: A.tcs[0], est: A.est } };
+        }
         this.room.changed();
         await this.sleep(T.between * 2);
       }
@@ -395,10 +448,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         case 'insurance': {
           if (!s || this.phase !== 'insurance' || !s.hands.length || s.insurance != null) return null;
           const take = Boolean(msg.take);
-          const answers = new Set(C.tcCandidates(this.rc, this.shoe.remaining).map((t) => S.insuranceCorrect(t)));
-          const ok = answers.has(take);
-          this.stat(s, 'decisions', ok);
-          this.note(s, `${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance. Take it at TC ≥ +3 (TC now ${signed(this.tc())}).`, ok ? 'good' : 'bad', 'play');
+          this.gradeInsurance(s, take);
           s.insurance = take ? Math.min(s.hands[0].bet / 2, s.stack) : 0;
           s.stack -= s.insurance;
           this.room.changed();
@@ -406,21 +456,13 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           return null;
         }
         case 'act': {
-          if (!s || this.phase !== 'play' || !this.turn || this.turn.seat !== i || s.choice != null) return null;
+          // Ignore clicks while a card is still being dealt (they'd be graded but never played).
+          if (!s || this.phase !== 'play' || !this.turn || this.turn.seat !== i || !s.awaiting || s.choice != null) return null;
           const a = msg.move;
           const hd = s.hands[this.turn.hand];
           const o = this.optsFor(s, hd);
           if (!ACTS.includes(a) || (a === 'D' && !o.canDouble) || (a === 'P' && !o.canSplit)) return null;
-          const up = S.upValue(this.dealer[0]);
-          const results = C.tcCandidates(this.rc, this.shoe.remaining).map((t) => S.correctAction(hd.cards, up, o, t));
-          const ok = results.some((r) => r.action === a);
-          const label = `${S.handLabel(hd.cards)} vs ${S.upLabel(up)}`;
-          const main = results[0];
-          const dev = results.find((r) => r.dev);
-          this.stat(s, 'decisions', ok);
-          this.note(s, ok
-            ? `✓ ${NAMES[a]} on ${label}${dev ? `: ${dev.note}` : ''}`
-            : `✗ ${NAMES[a]} on ${label}. Correct: ${NAMES[main.action]}${main.dev ? ` (${main.note}, TC ${signed(this.tc())})` : ' (basic strategy)'}`, ok ? 'good' : 'bad', 'play');
+          this.gradePlay(s, hd, a);
           s.choice = a;
           this.poke();
           return null;
@@ -474,7 +516,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         const you = { seat: mine, notes: me.notes, stack: me.stack, buyIns: me.buyIns, stats: me.stats, check: me.check };
         if (this.phase === 'betting' && me.bet == null) you.bet = { min: MIN, max: Math.min(MAX_BET, me.stack) };
         if (this.phase === 'insurance' && me.hands.length && me.insurance == null) you.insurance = true;
-        if (this.phase === 'play' && this.turn?.seat === mine && me.choice == null) {
+        if (this.phase === 'play' && this.turn?.seat === mine && me.awaiting && me.choice == null) {
           const o = this.optsFor(me, me.hands[this.turn.hand]);
           you.moves = { H: true, S: true, D: o.canDouble, P: o.canSplit };
         }

@@ -5,15 +5,15 @@ import { readiness } from '../readiness.js';
 import { currentUser } from '../store.js';
 
 const MODES = [
-  ['#countdown', '1', 'Countdown', '15–20 cards, then name the count.'],
-  ['#truecount', '2', 'True Count', 'Running count ÷ decks from the tray.'],
-  ['#basic', '3', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
-  ['#deviation', '4', 'Deviations', 'Basic play or the index play?'],
-  ['#table', '5', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
-  ['#play', '⚔', 'Play Online', 'Count battles and shared tables with other players.'],
-  ['#sessions', '6', 'Sessions', 'Simulator and casino results over time.'],
-  ['#training', 'T', 'Training Table', 'Play with a cheat panel showing the answers.'],
-  ['#calculator', '$', 'Bankroll Calculator', 'Hourly EV, standard deviation, risk of ruin.'],
+  ['#countdown', 'Countdown', '15–20 cards, then name the count.'],
+  ['#truecount', 'True Count', 'Running count ÷ decks from the tray.'],
+  ['#basic', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
+  ['#deviation', 'Deviations', 'Basic play or the index play?'],
+  ['#table', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
+  ['#play', 'Play Online', 'Count battles and shared tables with other players.'],
+  ['#sessions', 'Sessions', 'Simulator and casino results over time.'],
+  ['#training', 'Training Table', 'Play with a cheat panel showing the answers.'],
+  ['#calculator', 'Bankroll Calculator', 'Hourly EV, standard deviation, risk of ruin.'],
 ];
 
 export function mount(root, ctx) {
@@ -41,6 +41,6 @@ export function mount(root, ctx) {
         h('a', { class: 'btn sm', href: i.link }, i.met ? 'Keep sharp' : 'Practice'))))),
     h('div', { class: 'home-meta muted' },
       `${RULES.text}. Simulator bankroll ${money(G.bankroll + (G.session?.stack || 0))}${G.session ? ' (session in progress)' : ''}.`),
-    h('div', { class: 'mode-grid' }, MODES.map(([href, n, name, desc]) => h('a', { class: 'mode-card', href },
-      h('span', { class: 'mode-num' }, n), h('span', { class: 'mode-name' }, name), h('span', { class: 'mode-desc muted' }, desc))))));
+    h('div', { class: 'mode-grid' }, MODES.map(([href, name, desc]) => h('a', { class: 'mode-card', href },
+      h('span', { class: 'mode-name' }, name), h('span', { class: 'mode-desc muted' }, desc))))));
 }

@@ -82,8 +82,10 @@ export function mount(root, ctx) {
         const c = Number(cashOut.value);
         const hr = Number(hours.value);
         if (cashOut.value === '' || !(b >= 0) || !(c >= 0)) { toast('Enter a buy-in and cash-out.'); return; }
+        if (hours.value !== '' && !(hr >= 0 && hr <= 48)) { toast('Hours played should be between 0 and 48.'); return; }
         const [y, m, d] = date.value.split('-').map(Number);
         const t = new Date(y, m - 1, d, 12).getTime();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date.value) || !Number.isFinite(t) || t > Date.now() + 86400000) { toast('Pick the date you played.'); return; }
         G.sessions.push({
           id: `${Date.now()}`, kind: 'real', t, end: t, buyIn: b, cashOut: c, hours: hr || 0,
           countAcc: acc.value === '' ? null : Math.max(0, Math.min(100, Number(acc.value))), decisionAcc: null, notes: notes.value.trim(),

@@ -31,6 +31,7 @@ function saveBattle(players) {
     const before = new Map(users.map((p) => [p.userId, ratingOf(p.userId)]));
     const rated = users.length >= 2;
     const top = Math.max(...players.map((p) => p.score));
+    const soleTop = players.filter((p) => p.score === top).length === 1; // a tie for first is nobody's win
     for (const p of users) {
       let delta = 0;
       if (rated) {
@@ -41,7 +42,7 @@ function saveBattle(players) {
           delta += (K * (actual - expected)) / (users.length - 1);
         }
       }
-      const win = rated && p.score === top && p.score > 0 ? 1 : 0;
+      const win = rated && soleTop && p.score === top && p.score > 0 ? 1 : 0;
       db.prepare(`UPDATE battle_stats SET rating = rating + ?, rated_games = rated_games + ?, wins = wins + ?,
                     games = games + 1, rounds = rounds + ?, rounds_correct = rounds_correct + ?, updated_at = ?
                   WHERE user_id = ?`).run(delta, rated ? 1 : 0, win, p.rounds, p.correct, now, p.userId);

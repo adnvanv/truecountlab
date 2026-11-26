@@ -220,7 +220,7 @@ export function mount(root, ctx, { training = false } = {}) {
       h('button', { class: `m-count${showCount ? ' on' : ''}`, onclick: toggleReveal, 'aria-label': 'Show or hide the count' },
         showCount ? h('span', { class: 'mono' }, `RC ${signed(rc)} · TC ${signed(tc())}`) : h('span', {}, 'Count ••• ', h('small', {}, 'tap'))),
       soundBtn('m-icon'),
-      training ? h('button', { class: `m-icon cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat, 'aria-label': 'Toggle cheat panel' }, cheatCfg.cheat ? '👁' : '🙈') : null);
+      ...(training ? [h('button', { class: `m-icon cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat, 'aria-label': 'Toggle cheat panel' }, cheatCfg.cheat ? '👁' : '🙈')] : []));
   }
 
   function renderTable() {
