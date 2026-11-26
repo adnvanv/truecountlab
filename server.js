@@ -30,21 +30,54 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+// Every deploy gets a new build id (a hash of everything in public/). Pages load their
+// scripts and styles from /v/<build>/..., so a deploy changes every asset URL and no
+// browser or Cloudflare cache can keep serving old code. Those URLs never change
+// content, so they can be cached for a year. Pages themselves are never cached.
+function buildId() {
+  const hash = require('crypto').createHash('sha256');
+  const walk = (dir) => {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const p = path.join(dir, name);
+      if (fs.statSync(p).isDirectory()) walk(p);
+      else hash.update(path.relative(ROOT, p)).update(fs.readFileSync(p));
+    }
+  };
+  walk(ROOT);
+  return hash.digest('hex').slice(0, 12);
+}
+const BUILD = buildId();
+const LONG_CACHE = process.env.NODE_ENV === 'production'; // local dev: always refetch
+const VERSIONED = /^\/v\/([a-z0-9]{1,32})(\/.*)$/;
+// Point a page's own scripts and stylesheets at this build.
+const versionPage = (html) => html.replace(/(src|href)="(?![a-z]+:|\/|#)([^"?#]+\.(?:js|css))"/g, `$1="/v/${BUILD}/$2"`);
+
 function serveStatic(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return U.send(res, 405, 'Method not allowed');
   let p = pathname;
+  let cache = 'no-cache';
+  const v = VERSIONED.exec(p);
+  if (v) {
+    p = v[2];
+    // Only the current build is cacheable; an old id still gets today's file, uncached.
+    if (v[1] === BUILD && LONG_CACHE) cache = 'public, max-age=31536000, immutable';
+  }
   if (p === '/') p = '/index.html';
   if (p === '/privacy') p = '/privacy.html';
   const file = path.normalize(path.join(ROOT, p));
   if (!file.startsWith(ROOT + path.sep)) return U.send(res, 403, 'Forbidden');
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return U.send(res, 404, 'Not found');
-    res.writeHead(200, {
-      ...U.SECURITY_HEADERS,
-      'content-type': TYPES[path.extname(file)] || 'application/octet-stream',
-      'content-length': st.size,
-      'cache-control': 'no-cache',
-    });
+    const type = TYPES[path.extname(file)] || 'application/octet-stream';
+    if (path.extname(file) === '.html') {
+      return fs.readFile(file, 'utf8', (err2, html) => {
+        if (err2) return U.send(res, 500, 'Could not read the page');
+        const body = Buffer.from(versionPage(html));
+        res.writeHead(200, { ...U.SECURITY_HEADERS, 'content-type': type, 'content-length': body.length, 'cache-control': 'no-cache' });
+        res.end(req.method === 'HEAD' ? undefined : body);
+      });
+    }
+    res.writeHead(200, { ...U.SECURITY_HEADERS, 'content-type': type, 'content-length': st.size, 'cache-control': cache });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
   });

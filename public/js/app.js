@@ -3,7 +3,6 @@ import * as countdown from './views/countdown.js';
 import * as truecount from './views/truecount.js';
 import * as basic from './views/basic.js';
 import * as deviation from './views/deviation.js';
-import * as betting from './views/betting.js';
 import * as table from './views/table.js';
 import * as sessions from './views/sessions.js';
 import * as stats from './views/stats.js';
@@ -17,14 +16,12 @@ import { configure as configureSound, loadSamples } from './sfx.js';
 
 const VIEWS = [
   { id: 'home', label: 'Home', mount: home.mount },
-  { id: 'countdown', label: 'Countdown', mount: (r, c) => countdown.mount(r, c) },
-  { id: 'distraction', label: 'Distraction', mount: (r, c) => countdown.mount(r, c, { distraction: true }) },
-  { id: 'truecount', label: 'True Count', mount: truecount.mount },
-  { id: 'basic', label: 'Basic Strategy', mount: basic.mount },
-  { id: 'deviation', label: 'Deviations', mount: deviation.mount },
-  { id: 'betting', label: 'Bet Sizing', mount: betting.mount },
-  { id: 'table', label: 'Table', mount: table.mount },
-  { id: 'sessions', label: 'Sessions', mount: sessions.mount },
+  { id: 'countdown', n: '1', label: 'Countdown', mount: countdown.mount },
+  { id: 'truecount', n: '2', label: 'True Count', mount: truecount.mount },
+  { id: 'basic', n: '3', label: 'Basic Strategy', mount: basic.mount },
+  { id: 'deviation', n: '4', label: 'Deviations', mount: deviation.mount },
+  { id: 'table', n: '5', label: 'Table', mount: table.mount },
+  { id: 'sessions', n: '6', label: 'Sessions', mount: sessions.mount },
   { id: 'training', label: 'Training', mount: (r, c) => table.mount(r, c, { training: true }) },
   { id: 'calculator', label: 'Bankroll Calc', mount: calculator.mount },
   { id: 'stats', label: 'Stats', mount: stats.mount },
@@ -47,19 +44,17 @@ const ctx = {
 
 const nav = document.getElementById('nav');
 const view = document.getElementById('view');
-nav.append(...VIEWS.filter((v) => !v.hidden).map((v, i) => h('a', { href: `#${v.id}`, 'data-id': v.id }, h('span', { class: 'num' }, i >= 1 && i <= 8 ? String(i) : ''), v.label)));
+nav.append(...VIEWS.filter((v) => !v.hidden).map((v) => h('a', { href: `#${v.id}`, 'data-id': v.id }, h('span', { class: 'num' }, v.n || ''), v.label)));
 
 // ---- phone navigation: bottom tab bar + bottom sheets ---------------------
 const DRILLS = [
   ['countdown', '1', 'Countdown', '15–20 cards, then the count'],
-  ['distraction', '2', 'Distraction', 'Countdown in a noisy casino'],
-  ['truecount', '3', 'True Count', 'Running count ÷ decks'],
-  ['basic', '4', 'Basic Strategy', 'Hands vs upcards + heatmap'],
-  ['deviation', '5', 'Deviations', 'Basic or the index play?'],
-  ['betting', '6', 'Bet Sizing', '$25 / $50 / $75 from the count'],
+  ['truecount', '2', 'True Count', 'Running count ÷ decks'],
+  ['basic', '3', 'Basic Strategy', 'Hands vs upcards + heatmap'],
+  ['deviation', '4', 'Deviations', 'Basic or the index play?'],
 ];
 const MORE = [
-  ['sessions', '8', 'Sessions', 'Log and charts'],
+  ['sessions', '6', 'Sessions', 'Log and charts'],
   ['stats', '▤', 'Stats', 'Accuracy, speed, errors'],
   ['calculator', '$', 'Bankroll Calc', 'EV, SD, risk of ruin'],
   ['chart', '♠', 'Strategy', 'Charts and deviations'],

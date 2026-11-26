@@ -1,6 +1,6 @@
 # TrueCountLab
 
-A blackjack card-counting trainer for one strategy, coming soon at **truecountlab.com**:
+A blackjack card-counting trainer for one strategy, live at **[truecountlab.com](https://truecountlab.com)**:
 
 - **Game:** 6 decks, S17, DAS, 3:2, no surrender, 75% penetration, $25 minimum.
 - **Count:** Hi-Lo. True count = running count ÷ decks remaining, with decks estimated to the nearest half deck and the result rounded down.
@@ -17,13 +17,11 @@ The home screen has a **ready-to-play checklist** that unlocks once all four gat
 
 ## Modes
 1. **Countdown:** a random 15–20 cards from a fresh deck (other lengths are selectable), then you enter the running count. Misses show a card-by-card review. The goal is the right count at deck pace (≤ 0.58s per card).
-2. **Distraction:** the same countdown with synthesized casino audio, spoken numbers, a chatter ticker, and pop-up questions.
-3. **True Count:** a running count plus a discard tray (or a decks-remaining number) → enter the true count. Mistakes are classified, e.g. rounding, dividing by decks played, or a bad deck estimate.
-4. **Basic Strategy:** random hands, instant feedback, a mistake heatmap, and an optional focus on weak spots.
-5. **Deviations:** each hand shows its true count. Your pick is graded as basic strategy, the deviation, or a wrong play. Practice is weighted toward the deviations you miss, and there's a threshold drill at index −1/0/+1.
-6. **Bet Sizing:** given the true count (or the running count plus the tray), pick $25, $50, or $75.
-7. **Table:** a full 6-deck shoe with other players. It grades your play, deviations, and bets against the ramp, and gives random count checks. The count is hidden, and C reveals it. Sessions use the $500 buy-in and stop-loss.
-8. **Sessions:** simulator sessions log themselves, and you add real casino sessions by hand. The page charts results and counting accuracy over time.
+2. **True Count:** a running count plus a discard tray (or a decks-remaining number) → enter the true count. Mistakes are classified, e.g. rounding, dividing by decks played, or a bad deck estimate.
+3. **Basic Strategy:** random hands, instant feedback, a mistake heatmap, and an optional focus on weak spots.
+4. **Deviations:** each hand shows its true count. Your pick is graded as basic strategy, the deviation, or a wrong play. Practice is weighted toward the deviations you miss, and there's a threshold drill at index −1/0/+1.
+5. **Table:** a full 6-deck shoe with other players. It grades your play, deviations, and bets against the ramp, and gives random count checks. The count is hidden, and C reveals it. Sessions use the $500 buy-in and stop-loss.
+6. **Sessions:** simulator sessions log themselves, and you add real casino sessions by hand. The page charts results and counting accuracy over time.
 
 - **Training:** the table with practice chips, nothing logged, and a cheat toggle (X). The cheat panel shows the running count, decks left, true count, correct bet, and correct play, and highlights the right button.
 - **Bankroll Calc:** hourly EV, SD, and risk of ruin from bankroll, unit, and spread. It uses a true-count frequency table simulated for this game.
@@ -61,13 +59,15 @@ node --disable-warning=ExperimentalWarning server.js   # http://127.0.0.1:3040
 ```
 It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
 
+Scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of everything in `public/`. Each deploy changes every asset URL, so browsers and Cloudflare never keep running old code; with `NODE_ENV=production` those URLs are cached for a year.
+
 ## Deploy
 ```
 git push
 ```
 `git push` sends `main` to GitHub and to a bare repo on the server. The server's `post-receive` hook resets the live checkout to the pushed `main`, installs `deploy/count-trainer.service`, and restarts the systemd user service.
 
-The public site reaches the server through a **Cloudflare Tunnel**: `cloudflared` runs on the server as the `cloudflared` user service (`deploy/cloudflared.service`) and forwards `truecountlab.com` to the app on `127.0.0.1:3040`. No ports are opened on the network. Requests that come through Cloudflare are treated as public: they can't use the `/api/state` save file (it has no login yet), and they're redirected to `https://truecountlab.com`.
+The public site reaches the server through a **Cloudflare Tunnel**: `cloudflared` runs on the server as the `cloudflared` user service (`deploy/cloudflared.service`) and forwards `truecountlab.com` to the app on `127.0.0.1:3040`. No ports are opened on the network. Requests that come through Cloudflare are redirected to the one canonical address, `https://truecountlab.com`.
 
 Server-only files stay out of git and survive deploys:
 - `.env` sets `HOST`/`PORT` (the service reads it; default `127.0.0.1:3040`).

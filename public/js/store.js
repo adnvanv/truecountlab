@@ -15,9 +15,7 @@ export const DEFAULT_SETTINGS = {
   surrender: false,
   sound: { on: true, volume: 0.6 },
   countdown: { auto: true, ms: 500, range: '15-20' },
-  distraction: { auto: true, ms: 600, range: '15-20', audio: true, voice: true, popups: true, chatter: true, volume: 0.5 },
   tcDrill: { display: 'tray' },
-  betDrill: { display: 'tc' },
   basic: { focus: false, auto: true },
   deviation: { auto: true, mode: 'mixed', focus: true },
   training: { cheat: true },
@@ -27,11 +25,9 @@ export const DEFAULT_SETTINGS = {
 export function freshStats() {
   return {
     countdown: { runs: [] },
-    distraction: { runs: [] },
     truecount: { runs: [] },
     basic: { runs: [], cells: {} },
     deviation: { runs: [] },
-    betting: { runs: [] },
     training: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
     table: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
   };

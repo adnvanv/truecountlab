@@ -7,11 +7,9 @@ import { ACTIONS, DEVS } from '../strategy.js';
 
 const MODES = [
   { id: 'countdown', label: 'Countdown', link: '#countdown' },
-  { id: 'distraction', label: 'Distraction', link: '#distraction' },
   { id: 'truecount', label: 'True Count', link: '#truecount' },
   { id: 'basic', label: 'Basic Strategy', link: '#basic' },
   { id: 'deviation', label: 'Deviations', link: '#deviation' },
-  { id: 'betting', label: 'Bet Sizing', link: '#betting' },
   { id: 'table', label: 'Table', link: '#table' },
   { id: 'training', label: 'Training', link: '#training' },
 ];
@@ -55,13 +53,9 @@ function detail(id, s, G) {
     ['Avg time', runs.length ? secs(avg(runs.map((r) => r.ms))) : '—'],
   ];
 
-  if (id === 'countdown' || id === 'distraction') {
+  if (id === 'countdown') {
     const best = ok.length ? Math.min(...ok.map((r) => r.ms)) : null;
     const extra = [['Best correct', best ? secs(best) : '—'], ['Correct at deck pace', runs.filter((r) => r.goal).length]];
-    if (id === 'distraction') {
-      const n = runs.reduce((a, r) => a + (r.popups || 0), 0);
-      extra.push(['Pop-ups answered', pct(runs.reduce((a, r) => a + (r.popupsOk || 0), 0), n)]);
-    }
     return [numbers([...base, ...extra]), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => diffBucket(r.diff))), progress(runs)];
   }
   if (id === 'truecount') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => TC_ERRORS[r.err] || 'Other')), progress(runs)];
@@ -78,7 +72,6 @@ function detail(id, s, G) {
       h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => DEV_ERRORS[r.err])),
       h('h3', {}, 'Misses by deviation'), errorBars(tally(runs, (r) => byDev[r.dev])), progress(runs)];
   }
-  if (id === 'betting') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => (r.err === 'under' ? 'Underbet' : 'Overbet'))), progress(runs)];
 
   // table / training
   const T = st;

@@ -6,13 +6,11 @@ import { currentUser } from '../store.js';
 
 const MODES = [
   ['#countdown', '1', 'Countdown', '15–20 cards, then name the count.'],
-  ['#distraction', '2', 'Distraction', 'The same countdown inside a noisy casino.'],
-  ['#truecount', '3', 'True Count', 'Running count ÷ decks from the tray.'],
-  ['#basic', '4', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
-  ['#deviation', '5', 'Deviations', 'Basic play or the index play?'],
-  ['#betting', '6', 'Bet Sizing', '$25 / $50 / $75 from the count.'],
-  ['#table', '7', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
-  ['#sessions', '8', 'Sessions', 'Simulator and casino results over time.'],
+  ['#truecount', '2', 'True Count', 'Running count ÷ decks from the tray.'],
+  ['#basic', '3', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
+  ['#deviation', '4', 'Deviations', 'Basic play or the index play?'],
+  ['#table', '5', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
+  ['#sessions', '6', 'Sessions', 'Simulator and casino results over time.'],
   ['#training', 'T', 'Training Table', 'Play with a cheat panel showing the answers.'],
   ['#calculator', '$', 'Bankroll Calculator', 'Hourly EV, standard deviation, risk of ruin.'],
 ];
