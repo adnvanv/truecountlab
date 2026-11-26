@@ -1,0 +1,17 @@
+{
+  // Browser code: ES modules in public/js, checked from their JSDoc types. Nothing is emitted.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2023",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "skipLibCheck": true,
+    // The views are DOM code full of small event handlers: checked for real mistakes, not strict.
+    "strict": false
+  },
+  "include": ["public/js/**/*.js"]
+}

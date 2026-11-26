@@ -4,6 +4,7 @@
 
 const enabled = () => Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM);
 
+/** @param {{ to: string, subject: string, text: string, html?: string }} mail */
 async function sendMail({ to, subject, text, html }) {
   if (!enabled()) throw new Error('Email is not configured');
   const r = await fetch('https://api.resend.com/emails', {

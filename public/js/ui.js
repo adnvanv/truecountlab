@@ -92,8 +92,12 @@ export const toggle = (obj, key, label, onChange) => h('label', { class: 'check-
 
 export const typingInField = (e) => e.target instanceof Element && e.target.matches('input, select, textarea');
 
-// Line chart. series: [{ name, color, points: [{x, y}] }]
-export function lineChart(series, { height = 160, yFmt = String, xFmt = (x) => new Date(x).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), zero = false, yMin, yMax } = {}) {
+/**
+ * Line chart.
+ * @param {{ name: string, color: string, points: { x: number, y: number }[] }[]} series
+ * @param {{ height?: number, yFmt?: (v: number) => string, xFmt?: (x: number) => string, zero?: boolean, yMin?: number, yMax?: number }} [opts]
+ */
+export function lineChart(series, { height = 160, yFmt = (v) => String(v), xFmt = (x) => new Date(x).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), zero = false, yMin, yMax } = {}) {
   const pts = series.flatMap((s) => s.points);
   if (!pts.length) return h('div', { class: 'chart-empty muted' }, 'No data yet — keep practicing.');
   const W = 600;

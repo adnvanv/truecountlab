@@ -2,6 +2,7 @@
 import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct } from '../ui.js';
 import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
 import { sfx, configure, shuffleMs } from '../sfx.js';
+import { tally } from '../tally.js';
 import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS } from '../strategy.js';
 
 const ABORT = Symbol('abort');
@@ -71,6 +72,7 @@ export function mount(root, ctx, { training = false } = {}) {
   function count(key, ok) {
     // key: decisions | devs | checks | bets — mirrored in lifetime stats and the session
     const pairs = { decisions: 'correct', devs: 'devsCorrect', checks: 'checksCorrect', bets: 'betsCorrect' };
+    if (key !== 'devs') tally('play'); // devs are a subset of decisions
     for (const o of [T, sess()]) {
       if (!o) continue;
       o[key] = (o[key] || 0) + 1;
@@ -177,7 +179,7 @@ export function mount(root, ctx, { training = false } = {}) {
   function chipStack(amount, { label = true } = {}) {
     const chips = [];
     let left = Math.floor(amount);
-    for (const [d, c] of [[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']]) {
+    for (const [d, c] of /** @type {[number, string][]} */ ([[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']])) {
       while (left >= d && chips.length < 8) { chips.push([d, c]); left -= d; }
     }
     return h('div', { class: 'chip-pile', title: money(amount), style: `--n:${chips.length}` },
@@ -522,6 +524,7 @@ export function mount(root, ctx, { training = false } = {}) {
     const net = payout - wagered;
     sess().stack += payout;
     T.hands++;
+    tally('hand');
     sess().hands++;
     touch();
     note(`Round: ${money(net, { sign: true })}`, `round ${net > 0 ? 'won' : net < 0 ? 'lost' : 'even'}`);
@@ -589,7 +592,7 @@ export function mount(root, ctx, { training = false } = {}) {
   }
 
   function countCheck() {
-    return new Promise((resolve) => {
+    return new Promise((/** @type {(v?: unknown) => void} */ resolve) => {
       phase = 'check';
       const rcF = numberField('Running count');
       const tcF = numberField('True count');

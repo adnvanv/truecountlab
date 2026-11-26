@@ -1,0 +1,6 @@
+{
+  // The game logic the browser and the server share (cards, Hi-Lo, strategy, deviations): strict.
+  "extends": "./tsconfig.web.json",
+  "compilerOptions": { "strict": true },
+  "include": ["public/js/cards.js", "public/js/strategy.js"]
+}

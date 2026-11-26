@@ -10,13 +10,16 @@ const STEMS = ['fuck', 'shit', 'cunt', 'bitch', 'asshole', 'nigger', 'nigga', 'f
 const WORDS = ['fag', 'fags', 'dick', 'dicks', 'cock', 'cocks', 'pussy', 'spic', 'spics', 'chink', 'chinks', 'coon', 'coons', 'gook', 'gooks', 'kys'];
 
 // Undo common letter swaps (f*ck, sh1t, $hit, a$$) before matching.
+/** @type {Record<string, string>} */
 const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', '@': 'a', $: 's', '!': 'i', '*': 'u' };
 // Character by character, so the result lines up with the original text position for position.
+/** @param {string} s */
 const normalize = (s) => [...s].map((ch) => { const l = ch.toLowerCase(); return l.length === ch.length ? (LEET[l] ?? l) : ch; }).join('');
 
 const stemRe = new RegExp(`(^|[^a-z])(${STEMS.join('|')})`, 'g');
 const wordRe = new RegExp(`(^|[^a-z])(${WORDS.join('|')})(?=$|[^a-z])`, 'g');
 
+/** Mask slurs and strong profanity with asterisks. @param {string} text */
 function mask(text) {
   const norm = normalize(text);
   const hits = [];
@@ -37,9 +40,11 @@ function mask(text) {
   return chars.join('');
 }
 
+/** @param {string} text */
 const hasBadWord = (text) => mask(text) !== text;
 
 // Trim, collapse whitespace, drop control and invisible characters, cap the length.
+/** @param {unknown} text @param {number} [max] */
 function clean(text, max = MAX_CHAT) {
   return String(text ?? '')
     .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁤﻿]/g, ' ')
@@ -48,12 +53,14 @@ function clean(text, max = MAX_CHAT) {
     .slice(0, max);
 }
 
+/** A chat message ready to post, or null if it's empty. @param {unknown} text */
 function chatText(text) {
   const t = clean(text);
   return t ? mask(t) : null;
 }
 
 // Guest nicknames: 2–20 letters, digits, spaces, dots, dashes or underscores.
+/** @param {unknown} name @returns {{ name: string, error?: undefined } | { error: string, name?: undefined }} */
 function nickname(name) {
   const n = clean(name, 40);
   if (n.length < 2 || n.length > 20) return { error: 'Pick a name of 2–20 characters.' };

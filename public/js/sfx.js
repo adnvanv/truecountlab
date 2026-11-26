@@ -15,7 +15,7 @@ export function configure(c) {
 function ctx() {
   if (!cfg.on) return null;
   if (!ac) {
-    const C = window.AudioContext || window.webkitAudioContext;
+    const C = window.AudioContext || /** @type {any} */ (window).webkitAudioContext; // older Safari
     if (!C) return null;
     ac = new C();
     master = ac.createGain();

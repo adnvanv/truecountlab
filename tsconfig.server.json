@@ -1,0 +1,16 @@
+{
+  // The server: Node, CommonJS, strict. Types come from JSDoc and server/types.d.ts.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2023",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "typeRoots": ["./tools/node_modules/@types"],
+    "skipLibCheck": true
+  },
+  "include": ["server.js", "server/**/*.js", "server/**/*.d.ts"]
+}

@@ -31,6 +31,7 @@ async function until(fn, ms = 8000, label = 'condition') {
   throw new Error(`Timed out waiting for ${label}`);
 }
 
+/** @param {string} name @param {{ cookie?: string, token?: string }} [opts] */
 function client(name, { cookie, token } = {}) {
   const headers = { origin: BASE };
   if (cookie) headers.cookie = cookie;
@@ -156,7 +157,7 @@ try {
   carla.send({ t: 'game', a: 'start' });
   const f2 = await playBattle([carla, dmitri], (p) => p === dmitri);
   ok(f2[0].name === 'Dmitri' && f2[0].rating.after > 1200 && f2[1].rating.after < 1200, `ratings move (${f2[0].rating.after} / ${f2[1].rating.after})`);
-  const lb = await (await fetch(`${BASE}/api/leaderboards`, { headers: { cookie: cD } })).json();
+  const lb = /** @type {any} */ (await (await fetch(`${BASE}/api/leaderboards`, { headers: { cookie: cD } })).json());
   ok(lb.wins[0]?.name === 'Dmitri' && lb.you?.battle?.wins === 1, 'leaderboard and your stats show the win');
 
   console.log('Public quick play and the lobby');
@@ -217,7 +218,7 @@ try {
   ok(true, 'rounds keep going');
   await until(() => alice.room.game.you.notes.some((n) => /Count check/.test(n.text)), 60000, 'count check');
   ok(true, 'count checks come up and get graded');
-  const lb2 = await (await fetch(`${BASE}/api/leaderboards`)).json();
+  const lb2 = /** @type {any} */ (await (await fetch(`${BASE}/api/leaderboards`)).json());
   ok(lb2.tablePlay.length === 0, 'guests stay off the table leaderboards');
   gina.send({ t: 'leave' });
   await until(() => !alice.room.game.seats[3], 20000, 'gina seat freed');
@@ -239,6 +240,30 @@ try {
   const outcomes = await Promise.all(many.map((w) => new Promise((r) => { w.addEventListener('open', () => r('open')); w.addEventListener('error', () => r('refused')); })));
   ok(outcomes.includes('refused') && outcomes.filter((o) => o === 'open').length <= 20, `one address can't open unlimited connections (${outcomes.filter((o) => o === 'open').length} opened)`);
   many.forEach((w) => w.close());
+
+  console.log('Health, metrics and usage');
+  {
+    const hz = await fetch(`${BASE}/healthz`);
+    const hj = /** @type {any} */ (await hz.json());
+    ok(hz.status === 200 && hj.status === 'ok' && hj.db === 'ok' && /^[0-9a-f]{12}$/.test(hj.build), 'health check reports ok, the database and the build');
+    const m = await (await fetch(`${BASE}/metrics`)).text();
+    ok(/live_connections \d+/.test(m) && /http_requests_total\{route="\/api\/leaderboards",status="2xx"\} \d+/.test(m), 'metrics show live connections and HTTP traffic');
+    ok(/live_message_seconds_bucket\{type="game:bet",le="0\.001"\} \d+/.test(m), 'metrics time each kind of game move');
+    ok(/usage_hands_dealt [1-9]/.test(m), `hands dealt are counted (${(m.match(/usage_hands_dealt (\d+)/) || [])[1]})`);
+    // fetch() can't set Host, so ask the way Cloudflare's tunnel does, with node:http.
+    const http = await import('node:http');
+    const viaCf = await new Promise((resolve) => http.get({ host: '127.0.0.1', port: PORT, path: '/metrics', headers: { host: 'truecountlab.com', 'cf-connecting-ip': '203.0.113.9', 'cf-visitor': '{"scheme":"https"}' } }, (r) => { r.resume(); resolve(r.statusCode); }));
+    ok(viaCf === 404, `metrics are never served through Cloudflare (${viaCf})`);
+    const before = /** @type {any} */ (await (await fetch(`${BASE}/api/stats`)).json());
+    const t = await fetch(`${BASE}/api/tally`, { method: 'POST', headers: { 'content-type': 'application/json', origin: BASE }, body: JSON.stringify({ hand: 3, play: 7, drill: 100000, bogus: 5 }) });
+    await sleep(100);
+    const after = /** @type {any} */ (await (await fetch(`${BASE}/api/stats`, { headers: { 'cache-control': 'no-cache' } })).json());
+    ok(t.status === 204, 'browsers can report solo practice totals');
+    ok(after.accounts >= 2 && typeof after.hands === 'number' && typeof after.graded === 'number', `public stats: ${after.accounts} accounts, ${after.hands} hands, ${after.graded} graded`);
+    ok(before.solo_hands !== undefined && !('bogus' in after), 'unknown counters are ignored');
+    const badge = /** @type {any} */ (await (await fetch(`${BASE}/api/badge/hands`)).json());
+    ok(badge.schemaVersion === 1 && badge.label === 'hands played' && /\d/.test(badge.message), `README badge: ${badge.label} ${badge.message}`);
+  }
 
   console.log('WebSocket protocol');
   const net = await import('node:net');

@@ -18,9 +18,11 @@ const C = await import(pathToFileURL(`${ROOT}public/js/cards.js`).href);
 const S = await import(pathToFileURL(`${ROOT}public/js/strategy.js`).href);
 const savedBattles = [];
 const tableStats = [];
+const bumps = {};
 const fakeRecords = {
   saveBattle: (list) => { savedBattles.push(list); return new Map(); },
   addTableStats: (userId, d) => tableStats.push({ userId, ...d }),
+  bump: (key, n = 1) => { bumps[key] = (bumps[key] || 0) + n; },
 };
 const Table = require(`${ROOT}server/games/table.js`)({ cards: C, strategy: S }, fakeRecords);
 const Battle = require(`${ROOT}server/games/battle.js`)({ cards: C, strategy: S }, fakeRecords);
@@ -58,6 +60,15 @@ function stack(t, ranks) {
 }
 
 // Seat players, rig the shoe, and play one hand with scripted choices. plan(view, member) → message or null.
+/**
+ * @param {object} o
+ * @param {string[]} o.ranks the shoe, top first
+ * @param {[string, number][]} [o.seats] member id and seat
+ * @param {(view: any, member: any, table: any) => object | null} [o.plan]
+ * @param {Record<string, number>} [o.bets]
+ * @param {(table: any, room: any) => void} [o.setup]
+ * @param {boolean} [o.keepGoing] let the table carry on after the hand
+ */
 async function playHand({ ranks, seats = [['p1', 0]], plan, bets = {}, setup, keepGoing = false }) {
   const room = fakeRoom();
   const t = new Table(room);

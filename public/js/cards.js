@@ -1,4 +1,7 @@
 // Cards, shoe, Hi-Lo counting and the house rules this trainer simulates.
+// Shared by the browser and the server (which grades online play with the same code).
+
+/** @typedef {{ rank: string, suit: string, id?: number, down?: boolean, anim?: boolean, flip?: boolean }} Card */
 
 export const RULES = {
   decks: 6,
@@ -11,45 +14,56 @@ export const RULES = {
 
 // Bet ramp: $25 at TC ≤ +1, $50 at +2/+3, $75 at +4 or higher.
 export const BETS = [25, 50, 75];
+/** @param {number} tc */
 export const betFor = (tc) => (tc <= 1 ? 25 : tc <= 3 ? 50 : 75);
 
 export const SUITS = ['♠', '♥', '♦', '♣'];
+/** @type {Record<string, string>} */
 export const SUIT_NAMES = { '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' };
 export const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 export const TENS = ['10', 'J', 'Q', 'K'];
 
+/** @param {string} suit */
 export const isRed = (suit) => suit === '♥' || suit === '♦';
+/** 'A', 'T' for any ten-value card, or the rank itself. @param {string} rank */
 export function rankKey(rank) {
   if (rank === 'A') return 'A';
   if (TENS.includes(rank)) return 'T';
   return rank;
 }
+/** Blackjack value, aces as 11. @param {string} rank */
 export function bjValue(rank) {
   const k = rankKey(rank);
   return k === 'A' ? 11 : k === 'T' ? 10 : Number(k);
 }
 
 // Hi-Lo: 2–6 = +1, 7–9 = 0, 10–A = −1.
+/** @param {Card} card @returns {-1 | 0 | 1} */
 export function hiLo(card) {
   const v = bjValue(card.rank);
   return v <= 6 ? 1 : v <= 9 ? 0 : -1;
 }
 
 // Decks remaining as a player estimates them: nearest half deck, at least ½.
+/** @param {number} cardsRemaining */
 export const decksEstimate = (cardsRemaining) => Math.max(0.5, Math.round((cardsRemaining / 52) * 2) / 2);
 
 // True count = running count ÷ estimated decks remaining, rounded down.
+/** @param {number} rc @param {number} decks */
 export const trueCount = (rc, decks) => Math.floor(rc / decks) || 0;
+/** @param {number} rc @param {number} cardsRemaining */
 export const tcFromCards = (rc, cardsRemaining) => trueCount(rc, decksEstimate(cardsRemaining));
 
 // True counts a careful player could reach from the tray: the estimate a few
 // cards either side of the exact position can land on a neighbouring half deck.
+/** @param {number} rc @param {number} cardsRemaining @returns {number[]} */
 export function tcCandidates(rc, cardsRemaining) {
   const out = [tcFromCards(rc, cardsRemaining)];
   for (const d of [-6, 6]) out.push(tcFromCards(rc, Math.max(1, cardsRemaining + d)));
   return [...new Set(out)];
 }
 
+/** A fair random integer in [0, n), from the crypto RNG. @param {number} n */
 export function randInt(n) {
   const buf = new Uint32Array(1);
   const limit = Math.floor(0x100000000 / n) * n;
@@ -57,9 +71,12 @@ export function randInt(n) {
   do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
   return x % n;
 }
+/** @template T @param {T[]} arr @returns {T} */
 export const pick = (arr) => arr[randInt(arr.length)];
+/** @param {number} p probability 0–1 */
 export const chance = (p) => randInt(1_000_000) < p * 1_000_000;
 
+/** Fisher–Yates. @template T @param {T[]} a @returns {T[]} */
 export function shuffleInPlace(a) {
   for (let i = a.length - 1; i > 0; i--) {
     const j = randInt(i + 1);
@@ -69,12 +86,16 @@ export function shuffleInPlace(a) {
 }
 
 let uid = 0;
+/** @param {string} rank @param {string} [suit] @returns {Card} */
 export const makeCard = (rank, suit = pick(SUITS)) => ({ rank, suit, id: ++uid });
+/** @param {number} [n] @returns {Card[]} */
 export function makeDecks(n = 1) {
+  /** @type {Card[]} */
   const out = [];
   for (let d = 0; d < n; d++) for (const s of SUITS) for (const r of RANKS) out.push(makeCard(r, s));
   return out;
 }
+/** A card worth v (11 = ace, 10 = any ten-value card). @param {number} v */
 export function cardForValue(v) {
   if (v === 11) return makeCard('A');
   if (v === 10) return makeCard(pick(TENS));
@@ -82,12 +103,19 @@ export function cardForValue(v) {
 }
 
 export class Shoe {
-  constructor() { this.shuffle(); }
+  constructor() {
+    /** @type {Card[]} */
+    this.cards = [];
+    this.dealt = 0;
+    this.cutIndex = 0;
+    this.shuffle();
+  }
   shuffle() {
     this.cards = shuffleInPlace(makeDecks(RULES.decks));
     this.dealt = 0;
     this.cutIndex = Math.floor(this.cards.length * RULES.penetration);
   }
+  /** @returns {Card} */
   draw() { return this.cards[this.dealt++]; }
   get remaining() { return this.cards.length - this.dealt; }
   get pastCut() { return this.dealt >= this.cutIndex; }

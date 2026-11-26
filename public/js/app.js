@@ -87,7 +87,7 @@ const tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Sections' }, TABS.map(
   : h('a', { class: 'tab', 'data-tab': t.id, href: `#${t.id}` }, h('span', { class: 'tab-icon' }, t.icon), h('span', {}, t.label))));
 document.body.append(tabbar, sheet);
 const pageTitle = h('div', { class: 'page-title' });
-const topbar = document.querySelector('.topbar');
+const topbar = /** @type {HTMLElement} */ (document.querySelector('.topbar'));
 // Account button: "Sign in" for guests, your initial and name when signed in.
 const acct = h('a', { class: 'acct-chip', href: '#account' });
 function drawAcct() {
@@ -115,7 +115,7 @@ function route() {
   document.body.dataset.view = v.id;
   pageTitle.textContent = v.label;
   for (const t of tabbar.children) t.classList.toggle('active', TABS.find((x) => x.id === t.dataset.tab).views.includes(v.id));
-  for (const a of nav.children) a.classList.toggle('active', a.dataset.id === v.id);
+  for (const a of /** @type {HTMLCollectionOf<HTMLElement>} */ (nav.children)) a.classList.toggle('active', a.dataset.id === v.id);
   nav.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.title = `${v.label} · TrueCountLab`;
   unmount = v.mount(view, ctx);

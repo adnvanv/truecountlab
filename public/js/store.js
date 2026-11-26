@@ -2,6 +2,7 @@
 // Guests: saved in this browser. Signed in: also synced to the account (api/progress),
 // with revision numbers so devices merge instead of overwriting each other.
 import { RULES } from './cards.js';
+import { tally } from './tally.js';
 
 const KEY = 'bjtrainer.v2'; // progress document
 const META_KEY = 'tcl.sync'; // { owner, rev, pending }: who this copy belongs to and its sync state
@@ -246,6 +247,7 @@ function flush() {
 export function resetStats() { state.stats = freshStats(); save(); }
 
 export function addRun(bucket, run) {
+  tally('drill');
   bucket.runs.push({ t: Date.now(), ...run });
   if (bucket.runs.length > RUN_CAP) bucket.runs.splice(0, bucket.runs.length - RUN_CAP);
 }

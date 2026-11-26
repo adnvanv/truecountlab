@@ -13,7 +13,7 @@ const SEATS = 5;
 function chipStack(amount) {
   const chips = [];
   let left = Math.floor(amount);
-  for (const [d, c] of [[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']]) {
+  for (const [d, c] of /** @type {[number, string][]} */ ([[100, 'black'], [25, 'green'], [5, 'red'], [1, 'white']])) {
     while (left >= d && chips.length < 8) { chips.push([d, c]); left -= d; }
   }
   return h('div', { class: 'chip-pile', title: money(amount), style: `--n:${chips.length}` },

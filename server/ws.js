@@ -4,9 +4,13 @@
 const crypto = require('crypto');
 const { EventEmitter } = require('events');
 
+/** @typedef {import('net').Socket} Socket */
+/** @typedef {import('http').IncomingMessage} Req */
+
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const MAX_MESSAGE = 16 * 1024; // the largest message a browser may send us
 
+/** One unmasked server frame. @param {number} opcode @param {Buffer} payload */
 function frame(opcode, payload) {
   const len = payload.length;
   let head;
@@ -27,23 +31,28 @@ function frame(opcode, payload) {
   return Buffer.concat([head, payload]);
 }
 
+/** A server-side connection. Emits 'message' (text) and 'close'. */
 class WebSocket extends EventEmitter {
+  /** @param {Socket} socket @param {Buffer} [head] bytes already read past the handshake */
   constructor(socket, head) {
     super();
     this.socket = socket;
+    /** @type {Buffer} bytes received but not yet parsed into frames */
     this.buf = Buffer.alloc(0);
+    /** @type {Buffer[]} pieces of a fragmented message */
     this.parts = [];
     this.partsLen = 0;
     this.closed = false;
     this.alive = true; // reset by each pong; checked by the heartbeat
     socket.setNoDelay(true);
-    socket.on('data', (d) => this.onData(d));
+    socket.on('data', (/** @type {Buffer} */ d) => this.onData(d));
     socket.on('close', () => this.finish());
     socket.on('end', () => this.finish());
     socket.on('error', () => this.finish());
     if (head && head.length) this.onData(head);
   }
 
+  /** @param {string} text */
   send(text) {
     if (this.closed || this.socket.destroyed) return;
     this.socket.write(frame(0x1, Buffer.from(text, 'utf8')));
@@ -72,6 +81,7 @@ class WebSocket extends EventEmitter {
     this.emit('close');
   }
 
+  /** @param {Buffer} chunk */
   onData(chunk) {
     this.buf = this.buf.length ? Buffer.concat([this.buf, chunk]) : chunk;
     while (!this.closed && this.buf.length >= 2) {
@@ -103,6 +113,7 @@ class WebSocket extends EventEmitter {
     }
   }
 
+  /** @param {boolean} fin @param {number} opcode @param {Buffer} data */
   onFrame(fin, opcode, data) {
     if (opcode === 0x8) return this.close(1000);
     if (opcode === 0x9) { if (!this.closed) this.socket.write(frame(0xa, data)); return; }
@@ -126,8 +137,12 @@ class WebSocket extends EventEmitter {
   }
 }
 
-// Finish the handshake for an http 'upgrade' request. Returns the WebSocket, or null
-// after answering with an error.
+/**
+ * Finish the handshake for an http 'upgrade' request. Returns the WebSocket, or null
+ * after answering with an error.
+ * @param {Req} req @param {Socket} socket @param {Buffer} head
+ * @returns {WebSocket | null}
+ */
 function accept(req, socket, head) {
   const key = req.headers['sec-websocket-key'];
   if (String(req.headers.upgrade || '').toLowerCase() !== 'websocket' || !key || req.headers['sec-websocket-version'] !== '13') {
@@ -140,6 +155,7 @@ function accept(req, socket, head) {
   return new WebSocket(socket, head);
 }
 
+/** Refuse an upgrade with a plain HTTP status. @param {Socket} socket @param {number} code @param {string} text */
 function reject(socket, code, text) {
   try { socket.end(`HTTP/1.1 ${code} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); } catch { /* gone */ }
   setTimeout(() => socket.destroy(), 1000).unref();

@@ -18,10 +18,10 @@ const file = path.join(DATA_DIR, 'state.json');
 if (!fs.existsSync(file)) { console.error(`No old save file at ${file}`); process.exit(1); }
 const legacy = JSON.parse(fs.readFileSync(file, 'utf8'));
 
-const user = db.prepare('SELECT id, display_name, email FROM users WHERE email = ? OR display_name = ?').get(who.toLowerCase(), who);
+const user = /** @type {{ id: number, display_name: string, email: string } | undefined} */ (db.prepare('SELECT id, display_name, email FROM users WHERE email = ? OR display_name = ?').get(who.toLowerCase(), who));
 if (!user) { console.error(`No account with email or display name "${who}". Create the account first.`); process.exit(1); }
 
-const existing = db.prepare('SELECT rev, data FROM progress WHERE user_id = ?').get(user.id);
+const existing = /** @type {{ rev: number, data: string } | undefined} */ (db.prepare('SELECT rev, data FROM progress WHERE user_id = ?').get(user.id));
 if (existing) {
   const s = JSON.parse(existing.data).stats || {};
   const runs = Object.values(s).reduce((n, b) => n + (b.runs?.length || 0), 0);

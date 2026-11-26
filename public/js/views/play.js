@@ -8,6 +8,7 @@ import { battleUI } from './battle.js';
 import { tableUI } from './sharedtable.js';
 
 const KIND = { battle: 'Count battle', table: 'Shared table' };
+/** @type {[string, string, (v: number) => string, (n: number) => string][]} id, label, value and count formats */
 const BOARDS = [
   ['rating', 'Battle rating', (v) => String(v), (n) => `${n} rated`],
   ['wins', 'Battle wins', (v) => String(v), (n) => `${n} rated`],

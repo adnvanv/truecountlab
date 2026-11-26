@@ -70,9 +70,15 @@ const MIGRATIONS = [
      checks_correct INTEGER NOT NULL DEFAULT 0,
      updated_at     INTEGER NOT NULL
    );`,
+  // 3: site-wide usage totals (no per-user or per-visit data).
+  `CREATE TABLE counters (
+     key        TEXT PRIMARY KEY,
+     value      INTEGER NOT NULL DEFAULT 0,
+     updated_at INTEGER NOT NULL
+   );`,
 ];
 
-const version = db.prepare('PRAGMA user_version').get().user_version;
+const version = Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
 for (let v = version; v < MIGRATIONS.length; v++) {
   db.exec('BEGIN');
   try {
@@ -85,7 +91,12 @@ for (let v = version; v < MIGRATIONS.length; v++) {
   }
 }
 
-// Run fn inside a transaction.
+/**
+ * Run fn inside a transaction; roll back if it throws.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
 function tx(fn) {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -105,4 +116,25 @@ setInterval(() => {
   db.prepare('DELETE FROM password_resets WHERE expires_at < ?').run(now);
 }, 60 * 60 * 1000).unref();
 
-module.exports = { db, tx, DATA_DIR, DB_FILE };
+/** @typedef {null | number | bigint | string | NodeJS.ArrayBufferView} SQLValue */
+
+/**
+ * First row of a query. The row type comes from where it's used:
+ * `/** @type {{ rev: number } | undefined} *\/ const row = one('SELECT rev ...', id)`.
+ * @template T
+ * @param {string} sql
+ * @param {...SQLValue} args
+ * @returns {T | undefined}
+ */
+const one = (sql, ...args) => /** @type {any} */ (db.prepare(sql).get(...args));
+
+/**
+ * All rows of a query, typed like one().
+ * @template T
+ * @param {string} sql
+ * @param {...SQLValue} args
+ * @returns {T[]}
+ */
+const all = (sql, ...args) => /** @type {any} */ (db.prepare(sql).all(...args));
+
+module.exports = { db, tx, one, all, DATA_DIR, DB_FILE };

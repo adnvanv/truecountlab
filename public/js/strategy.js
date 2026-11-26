@@ -2,11 +2,26 @@
 // deviations this trainer drills.
 import { rankKey, bjValue } from './cards.js';
 
+/** @typedef {import('./cards.js').Card} Card */
+/** @typedef {{ canDouble: boolean, canSplit: boolean, canSurrender?: boolean }} Options */
+/** @typedef {'H' | 'S' | 'D' | 'P' | 'R'} Action */
+/** @typedef {'H' | 'S' | 'D' | 'Ds' | 'P'} Code a chart entry: Ds is double, else stand */
+/**
+ * @typedef {object} Deviation
+ * @property {string} id @property {string} group @property {'ins' | 'play' | 'surrender'} kind @property {string} name
+ * @property {number} [total] @property {number} up @property {number} tc the index
+ * @property {string} at the play at or above the index @property {string} below the play under it
+ */
+
+/** @type {Record<string, string>} */
 export const ACTIONS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender', Y: 'Take insurance', N: 'Decline insurance' };
 export const UPCARDS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+/** @param {number} v */
 export const upLabel = (v) => (v === 11 ? 'A' : String(v));
+/** @param {number} n */
 const signed = (n) => (n > 0 ? `+${n}` : String(n));
 
+/** @param {Card[]} cards */
 export function handTotal(cards) {
   let total = 0;
   let aces = 0;
@@ -18,10 +33,14 @@ export function handTotal(cards) {
   while (total > 21 && aces > 0) { total -= 10; aces--; }
   return { total, soft: aces > 0 };
 }
+/** @param {Card[]} cards */
 export const isPair = (cards) => cards.length === 2 && rankKey(cards[0].rank) === rankKey(cards[1].rank);
+/** @param {Card[]} cards */
 export const isBlackjack = (cards) => cards.length === 2 && handTotal(cards).total === 21;
+/** @param {Card} card */
 export const upValue = (card) => bjValue(card.rank);
 
+/** @param {Card[]} cards */
 export function handLabel(cards) {
   const { total, soft } = handTotal(cards);
   if (isPair(cards)) {
@@ -34,8 +53,10 @@ export function handLabel(cards) {
 }
 
 // Codes: H hit, S stand, D double (else hit), Ds double (else stand), P split.
-const row = (s) => s.trim().split(/\s+/);
+/** @param {string} s @returns {Code[]} */
+const row = (s) => /** @type {Code[]} */ (s.trim().split(/\s+/));
 //                        2  3  4  5  6  7  8  9  T  A
+/** @type {Record<number, Code[]>} */
 export const HARD = {
   8:  row('H  H  H  H  H  H  H  H  H  H'),
   9:  row('H  D  D  D  D  H  H  H  H  H'),
@@ -48,6 +69,7 @@ export const HARD = {
   16: row('S  S  S  S  S  H  H  H  H  H'),
   17: row('S  S  S  S  S  S  S  S  S  S'),
 };
+/** @type {Record<number, Code[]>} */
 export const SOFT = {
   12: row('H  H  H  H  H  H  H  H  H  H'),
   13: row('H  H  H  D  D  H  H  H  H  H'),
@@ -59,6 +81,7 @@ export const SOFT = {
   19: row('S  S  S  S  S  S  S  S  S  S'),
   20: row('S  S  S  S  S  S  S  S  S  S'),
 };
+/** @type {Record<string, Code[]>} */
 export const PAIRS = {
   A: row('P  P  P  P  P  P  P  P  P  P'),
   T: row('S  S  S  S  S  S  S  S  S  S'),
@@ -72,9 +95,11 @@ export const PAIRS = {
   2: row('P  P  P  P  P  P  H  H  H  H'),
 };
 
+/** A chart code as a play you can make with these options. @param {Code} code @param {Options} o @returns {Action} */
 const resolve = (code, o) => (code === 'D' ? (o.canDouble ? 'D' : 'H') : code === 'Ds' ? (o.canDouble ? 'D' : 'S') : code);
 
 // Heatmap cell for a decision: { group: 'hard'|'soft'|'pair', row, col }.
+/** @param {Card[]} cards @param {number} up @param {boolean} [canSplit] */
 export function cellOf(cards, up, canSplit = true) {
   const { total, soft } = handTotal(cards);
   const col = upLabel(up);
@@ -82,9 +107,10 @@ export function cellOf(cards, up, canSplit = true) {
   if (soft) return { group: 'soft', row: String(Math.min(total, 20)), col };
   return { group: 'hard', row: String(Math.min(Math.max(total, 8), 17)), col };
 }
+/** @param {{ group: string, row: string, col: string }} c */
 export const cellKey = (c) => `${c.group}:${c.row}:${c.col}`;
 
-// o = { canDouble, canSplit }
+/** @param {Card[]} cards @param {number} up dealer upcard value (11 = ace) @param {Options} o */
 export function basicStrategy(cards, up, o) {
   const col = up - 2;
   const { total, soft } = handTotal(cards);
@@ -103,6 +129,7 @@ export function basicStrategy(cards, up, o) {
 // Count deviations. Make the `at` play when TC >= tc (the index); otherwise `below`.
 // group: core (original 8) · low (low-count hits) · extra · surrender (only with the toggle on).
 export const DEV_GROUPS = { core: 'Core', low: 'Low-count hits', extra: 'Extra doubles/stands', surrender: 'Surrender' };
+/** @type {Deviation[]} */
 export const DEVS = [
   { id: 'ins', group: 'core', kind: 'ins', name: 'Insurance', tc: 3, at: 'Y', below: 'N', up: 11 },
   { id: '16v10', group: 'core', kind: 'play', name: '16 vs 10', total: 16, up: 10, tc: 0, at: 'S', below: 'H' },
@@ -130,8 +157,10 @@ export const DEVS = [
   { id: 'R15v9', group: 'surrender', kind: 'surrender', name: '15 vs 9', total: 15, up: 9, tc: 2, at: 'R', below: 'play' },
   { id: 'R15vA', group: 'surrender', kind: 'surrender', name: '15 vs A', total: 15, up: 11, tc: 1, at: 'R', below: 'play' },
 ];
+/** @param {boolean} surrender */
 export const activeDevs = (surrender) => DEVS.filter((d) => surrender || d.kind !== 'surrender');
 
+/** @param {Deviation} d */
 export function devNote(d) {
   if (d.kind === 'ins') return `Insurance: take at TC ≥ ${signed(d.tc)}`;
   if (d.kind === 'surrender') return `${d.name}: Surrender at TC ≥ ${signed(d.tc)}`;
@@ -139,12 +168,18 @@ export function devNote(d) {
   return `${d.name}: ${ACTIONS[d.at]} at TC ≥ ${signed(d.tc)}, otherwise ${ACTIONS[d.below]}`;
 }
 
+/** @param {number} tc */
 export const insuranceCorrect = (tc) => tc >= 3;
 
 // Correct play, applying deviations when a true count is given.
 // o = { canDouble, canSplit, canSurrender }. Basic strategy itself never surrenders;
 // surrender only comes from the four surrender deviations (toggle on).
 // Deviations apply to hard totals, not to pairs that basic strategy splits.
+/**
+ * @param {Card[]} cards @param {number} up @param {Options} o
+ * @param {number | null} [tc] the true count; without one, plain basic strategy
+ * @returns {{ action: Action, basic: Action, info: ReturnType<typeof basicStrategy>, dev: Deviation | null, note: string | null }}
+ */
 export function correctAction(cards, up, o, tc = null) {
   const b = basicStrategy(cards, up, o);
   const res = { action: b.action, basic: b.action, info: b, dev: null, note: null };
@@ -156,7 +191,7 @@ export function correctAction(cards, up, o, tc = null) {
   }
   const d = DEVS.find((x) => x.kind === 'play' && x.total === b.total && x.up === up);
   if (!d) return surrDev ? { ...res, dev: surrDev, note: devNote(surrDev) } : res;
-  let a = tc >= d.tc ? d.at : d.below;
+  let a = /** @type {Action} */ (tc >= d.tc ? d.at : d.below); // play deviations are always H, S or D
   if (a === 'D' && !o.canDouble) a = 'H';
   return { ...res, action: a, dev: d, note: devNote(d) };
 }

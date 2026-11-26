@@ -1,0 +1,7 @@
+{
+  // Test and maintenance scripts: checked, but without strict mode (they're short-lived
+  // test code that pokes at internals).
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": { "strict": false },
+  "include": ["scripts/**/*.js", "scripts/**/*.mjs"]
+}

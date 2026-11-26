@@ -1,0 +1,12 @@
+{
+  "name": "truecountlab-tools",
+  "private": true,
+  "description": "Dev-only tooling (type checking). The app itself has no npm dependencies.",
+  "devDependencies": {
+    "@types/node": "22.20.7",
+    "typescript": "7.0.2"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ../tsconfig.server.json && tsc -p ../tsconfig.core.json && tsc -p ../tsconfig.web.json && tsc -p ../tsconfig.scripts.json"
+  }
+}
