@@ -248,6 +248,7 @@ function exportAccount(req, res, user) {
     exportedAt: new Date().toISOString(),
     account: publicUser(user),
     progress: progress ? JSON.parse(progress.data) : null,
+    online: require('./records').mine(user.id),
   };
   U.send(res, 200, JSON.stringify(body, null, 2), 'application/json; charset=utf-8', {
     'content-disposition': `attachment; filename="truecountlab-${user.display_name.replace(/[^A-Za-z0-9_-]/g, '_')}.json"`,

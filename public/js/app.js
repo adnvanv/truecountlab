@@ -11,6 +11,7 @@ import * as settings from './views/settings.js';
 import * as home from './views/home.js';
 import * as calculator from './views/calculator.js';
 import * as accountView from './views/account.js';
+import * as play from './views/play.js';
 import { h } from './ui.js';
 import { configure as configureSound, loadSamples } from './sfx.js';
 
@@ -21,6 +22,7 @@ const VIEWS = [
   { id: 'basic', n: '3', label: 'Basic Strategy', mount: basic.mount },
   { id: 'deviation', n: '4', label: 'Deviations', mount: deviation.mount },
   { id: 'table', n: '5', label: 'Table', mount: table.mount },
+  { id: 'play', label: 'Online', mount: play.mount },
   { id: 'sessions', n: '6', label: 'Sessions', mount: sessions.mount },
   { id: 'training', label: 'Training', mount: (r, c) => table.mount(r, c, { training: true }) },
   { id: 'calculator', label: 'Bankroll Calc', mount: calculator.mount },
@@ -65,6 +67,7 @@ const TABS = [
   { id: 'home', icon: '⌂', label: 'Home', views: ['home'] },
   { id: 'drills', icon: '◎', label: 'Drills', views: DRILLS.map((d) => d[0]), sheet: DRILLS },
   { id: 'table', icon: '♠', label: 'Table', views: ['table'] },
+  { id: 'play', icon: '⚔', label: 'Online', views: ['play'] },
   { id: 'training', icon: '👁', label: 'Training', views: ['training'] },
   { id: 'more', icon: '☰', label: 'More', views: MORE.map((d) => d[0]), sheet: MORE },
 ];

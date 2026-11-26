@@ -26,6 +26,16 @@ The home screen has a **ready-to-play checklist** that unlocks once all four gat
 - **Training:** the table with practice chips, nothing logged, and a cheat toggle (X). The cheat panel shows the running count, decks left, true count, correct bet, and correct play, and highlights the right button.
 - **Bankroll Calc:** hourly EV, SD, and risk of ruin from bankroll, unit, and spread. It uses a true-count frequency table simulated for this game.
 
+## Online
+**Play online** (`#play`) has live multiplayer over WebSockets:
+- **Count battles** for up to 8 players. Everyone gets the same question at the same moment: running count (cards flash by, faster each round), true count (a running count and a discard tray), or play the hand (deviations included). Right answers score 100 plus up to 100 for speed. The host picks 6, 9 or 12 rounds and which round types.
+- **Shared tables** for up to 5 players at one 6-deck shoe, same rules as the solo table, with $500 in table chips. Every bet, play, insurance decision and count check is graded privately for each player.
+- **Rooms:** quick play joins an open public room or starts one; private rooms are joined by a 6-letter code or invite link. The host can start games, change battle settings and remove players.
+- **Chat** in every room: 200 characters, 5 messages per 10 seconds, slurs and strong profanity masked, mute per player. Never saved.
+- **Leaderboards** (signed-in players only): battle rating (Elo, moves only when two or more signed-in players battle), wins and accuracy, and shared-table play and count-check accuracy.
+
+Guests can play everything with a nickname; only signed-in players are rated or stored. The server deals, keeps the clock and grades with the same `cards.js` and `strategy.js` the browser uses. Nothing about a round is sent before it's on screen.
+
 **Stats** shows accuracy, speed, error types, and progress by day for each mode. **Strategy** is the reference chart.
 
 ## Accounts
@@ -63,6 +73,8 @@ ssh -t <server> "bash ~/blackjack/scripts/set-keys.sh google"
 node --disable-warning=ExperimentalWarning server.js   # http://127.0.0.1:3040
 ```
 It's vanilla JS with ES modules: no build step and no dependencies. `HOST` and `PORT` environment variables change where it listens.
+
+`node scripts/test-live.mjs` runs the online-play tests against a throwaway server (`LIVE_TIME_SCALE` speeds up the game clocks there).
 
 Scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of everything in `public/`. Each deploy changes every asset URL, so browsers and Cloudflare never keep running old code; with `NODE_ENV=production` those URLs are cached for a year.
 

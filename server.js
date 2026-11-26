@@ -1,4 +1,4 @@
-// TrueCountLab server: static files, accounts, sign-in and saved progress.
+// TrueCountLab server: static files, accounts, sign-in, saved progress and live play.
 // No npm dependencies: Node's built-in http, crypto, fetch and node:sqlite.
 // Usage: HOST=127.0.0.1 PORT=3040 node --disable-warning=ExperimentalWarning server.js
 'use strict';
@@ -9,6 +9,8 @@ const U = require('./server/util');
 const auth = require('./server/auth');
 const oauth = require('./server/oauth');
 const progress = require('./server/progress');
+const records = require('./server/records');
+const live = require('./server/live');
 
 // HOST may list several addresses, e.g. "127.0.0.1,100.64.0.5" (loopback for the
 // Cloudflare tunnel plus a private-network address).
@@ -100,6 +102,7 @@ async function handle(req, res) {
   }
 
   if (url.pathname === '/healthz') return U.send(res, 200, 'ok');
+  if (url.pathname === '/api/online' && req.method === 'GET') return U.json(res, 200, live.stats());
 
   const isApi = url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/');
   if (isApi) {
@@ -108,6 +111,7 @@ async function handle(req, res) {
       if (await auth.handle(req, res, url)) return;
       if (await oauth.handle(req, res, url)) return;
       if (await progress.handle(req, res, url)) return;
+      if (await records.handle(req, res, url, auth.currentUser)) return;
     } catch (e) {
       if (res.headersSent) return res.end();
       if (e.status) return U.fail(res, e.status, e.message);
@@ -123,6 +127,7 @@ async function handle(req, res) {
 // still connecting at boot), keep retrying it without taking the others down.
 function listen(host) {
   const server = http.createServer(handle);
+  server.on('upgrade', (req, socket, head) => live.upgrade(req, socket, head)); // live play at /ws
   server.on('error', (err) => {
     console.error(`Can't listen on ${host}:${PORT} (${err.code}); retrying in 5s`);
     setTimeout(() => listen(host), 5000);

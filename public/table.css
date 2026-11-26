@@ -163,7 +163,7 @@
   .page-title { display: block; font-weight: 700; color: var(--gold); font-size: 0.95rem; }
 
   .tabbar {
-    display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     height: var(--tab-h); padding-bottom: env(safe-area-inset-bottom);
     background: rgba(5, 24, 17, 0.94); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
   }

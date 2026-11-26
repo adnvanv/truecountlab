@@ -10,6 +10,7 @@ const MODES = [
   ['#basic', '3', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
   ['#deviation', '4', 'Deviations', 'Basic play or the index play?'],
   ['#table', '5', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
+  ['#play', '⚔', 'Play Online', 'Count battles and shared tables with other players.'],
   ['#sessions', '6', 'Sessions', 'Simulator and casino results over time.'],
   ['#training', 'T', 'Training Table', 'Play with a cheat panel showing the answers.'],
   ['#calculator', '$', 'Bankroll Calculator', 'Hourly EV, standard deviation, risk of ruin.'],

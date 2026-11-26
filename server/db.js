@@ -48,6 +48,28 @@ const MIGRATIONS = [
      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
      expires_at INTEGER NOT NULL
    );`,
+  // 2: multiplayer. Battle ratings and shared-table accuracy, for signed-in players.
+  `CREATE TABLE battle_stats (
+     user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+     rating         REAL NOT NULL DEFAULT 1200,
+     rated_games    INTEGER NOT NULL DEFAULT 0,
+     wins           INTEGER NOT NULL DEFAULT 0,
+     games          INTEGER NOT NULL DEFAULT 0,
+     rounds         INTEGER NOT NULL DEFAULT 0,
+     rounds_correct INTEGER NOT NULL DEFAULT 0,
+     updated_at     INTEGER NOT NULL
+   );
+   CREATE TABLE table_stats (
+     user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+     hands          INTEGER NOT NULL DEFAULT 0,
+     decisions      INTEGER NOT NULL DEFAULT 0,
+     correct        INTEGER NOT NULL DEFAULT 0,
+     bets           INTEGER NOT NULL DEFAULT 0,
+     bets_correct   INTEGER NOT NULL DEFAULT 0,
+     checks         INTEGER NOT NULL DEFAULT 0,
+     checks_correct INTEGER NOT NULL DEFAULT 0,
+     updated_at     INTEGER NOT NULL
+   );`,
 ];
 
 const version = db.prepare('PRAGMA user_version').get().user_version;
