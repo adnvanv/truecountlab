@@ -104,10 +104,44 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 - **Metrics:** `GET /metrics` serves Prometheus text: HTTP rate and latency by route, WebSocket messages and handling time by move type, event-loop delay, memory, CPU, connections, rooms and usage totals. It's only served to the server itself and the private network, never through Cloudflare.
 - **Logs:** one JSON object per line (`server/log.js`), filterable with `journalctl --user -u count-trainer -o cat | jq 'select(.level=="error")'`.
 - **Usage:** `GET /api/stats` (accounts, hands, plays graded, battles), with shields.io badge endpoints at `/api/badge/hands|graded|battles|accounts`.
-- **Backups:**
-  - `deploy/backup.sh` takes a consistent snapshot (`VACUUM INTO`, integrity-checked, gzipped) nightly at 04:30 and before every deploy, keeping 14 nightly and 10 pre-deploy copies in `~/backups/truecountlab`.
-  - Litestream streams every change to Cloudflare R2. It turns on with `bash scripts/set-keys.sh r2`, and `deploy/litestream.yml` shows how to restore.
+- **Backups:** two layers, one local and one off-site. See [Backups](#backups).
 - **Shutdown:** on SIGTERM, live players are told the site is updating, connections close with code 1012 (browsers reconnect by themselves), and usage counters are flushed.
+
+## Backups
+The whole site's state is one SQLite file, `data/truecountlab.db`, so it's backed up two ways:
+
+| | Local snapshots | Off-site replica |
+|---|---|---|
+| Tool | `deploy/backup.sh` | [Litestream](https://litestream.io) 0.5 (`deploy/litestream.yml`) |
+| Where | `~/backups/truecountlab` on the server | Cloudflare R2 bucket `truecountlab-backups` |
+| When | Nightly at 04:30 and before every deploy | Every change, uploaded within 1 minute |
+| Kept | 14 nightly and 10 pre-deploy copies | 3 days of snapshots and changes |
+| Protects against | A bad deploy or migration, an accidental delete | Losing the machine or its disk |
+
+- **Local snapshots** use `VACUUM INTO`, so the copy is consistent while the app keeps writing. Each copy passes `PRAGMA integrity_check` before it's gzipped and kept.
+- **The R2 replica** follows SQLite's write-ahead log: a full snapshot once a day, plus small change files merged every 10 minutes and every hour. The R2 token can only read and write that one bucket.
+- **Cost:** it stays inside R2's free tier. That's a few MB stored against 10 GB free, and at most about 48,000 uploads a month against 1,000,000 free (which is why the sync interval is 1 minute). Downloads are free, and a $1 budget alert on the account catches anything unexpected.
+
+**Restore** (stop the app first, so nothing writes to the database while it's replaced):
+```
+systemctl --user stop count-trainer
+# From R2: the latest state, to within about a minute
+set -a; . ~/blackjack/.env; set +a
+litestream restore -config ~/blackjack/deploy/litestream.yml -o /tmp/restored.db ~/blackjack/data/truecountlab.db
+# Or from a local snapshot
+gunzip -c ~/backups/truecountlab/<file>.db.gz > /tmp/restored.db
+# Then swap it in
+mv ~/blackjack/data/truecountlab.db{,.broken}; rm -f ~/blackjack/data/truecountlab.db-{wal,shm}
+mv /tmp/restored.db ~/blackjack/data/truecountlab.db
+systemctl --user start count-trainer && systemctl --user restart litestream
+```
+The R2 restore was tested on 2026-11-27: it came back with an `ok` integrity check and every table.
+
+**Check on it:**
+- `systemctl --user status litestream`
+- `journalctl --user -u litestream -o cat`
+- `litestream ltx -config ~/blackjack/deploy/litestream.yml ~/blackjack/data/truecountlab.db` lists what's in R2. It needs `.env` loaded, as in the restore steps.
+- `ls -lh ~/backups/truecountlab`
 
 ## Develop
 ```
@@ -117,7 +151,7 @@ Vanilla JS with ES modules: no build step, and no runtime dependencies. `HOST` a
 
 ```
 npm ci --prefix tools && npm run typecheck --prefix tools      # tsc --checkJs (dev-only tooling)
-node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 42 game-rules tests, stacked shoes
+node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 49 game-rules tests, stacked shoes
 node scripts/test-live.mjs                                     # 58 end-to-end tests against a throwaway server
 node scripts/check-null-text.js                                # no "null" printed as page text
 ```
