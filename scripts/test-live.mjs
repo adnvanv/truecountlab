@@ -207,7 +207,9 @@ try {
   ok(g1.seats[0].hands[0].result && g1.seats[3].hands[0].result, 'both seats get a result');
   ok(g1.dealer.every((c) => c.rank) && g1.dealerTotal >= 17 || g1.seats.some((s) => s && s.hands.some((h) => h.total > 21)) || true, 'dealer finishes the hand');
   ok(alice.room.game.you.notes.some((n) => /Bet \$25|ramp/.test(n.text)), 'Alice gets private bet grading');
-  ok(alice.room.game.you.notes.some((n) => /Stand on|Stand/.test(n.text)), 'Alice gets private play grading');
+  // A blackjack (hers or the dealer's) ends the hand with no play to grade, so wait for one she plays.
+  await until(() => alice.room?.game?.you?.notes?.some((n) => /Stand/.test(n.text)), 30000, 'a hand Alice plays');
+  ok(true, 'Alice gets private play grading');
   ok(!JSON.stringify(gina.room.game).includes(alice.room.game.you.notes.at(-1).text) || true, 'notes are per player');
   const ginaView = gina.room.game;
   ok(ginaView.you.seat === 3 && !('notes' in (ginaView.seats[0] || {})), 'others’ notes aren’t sent to Gina');
