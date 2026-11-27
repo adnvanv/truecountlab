@@ -38,7 +38,10 @@ main() {
       echo "deploy: couldn't reach GitHub; trying again next minute"
       return 0
     fi
-    total="$(jq '.total_count' <<<"$runs")"
+    # The scheduled Uptime workflow also reports checks on main's newest commit; it says
+    # whether the live site is up, not whether this commit is good, so it doesn't count.
+    runs="$(jq '.check_runs |= map(select(.name != "Uptime check"))' <<<"$runs")"
+    total="$(jq '.check_runs | length' <<<"$runs")"
     pending="$(jq '[.check_runs[] | select(.status != "completed")] | length' <<<"$runs")"
     failed="$(jq '[.check_runs[] | select(.status == "completed" and ((.conclusion | IN("success", "skipped", "neutral")) | not))] | length' <<<"$runs")"
     # CI hasn't started or finished yet: wait for it.
@@ -84,7 +87,7 @@ switch_to() {
   echo "GIT_COMMIT=$commit" >"$state/build.env"
   systemctl --user daemon-reload
   systemctl --user enable -q count-trainer
-  systemctl --user enable -q --now truecountlab-deploy.timer truecountlab-backup.timer
+  systemctl --user enable -q --now truecountlab-deploy.timer truecountlab-backup.timer truecountlab-backup-status.timer
   systemctl --user restart count-trainer
   systemctl --user try-restart litestream || true
 }

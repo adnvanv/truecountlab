@@ -100,7 +100,8 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 - **Your data:** export or delete your account from the Account page. Usage totals are anonymous counts only. See [`/privacy`](https://truecountlab.com/privacy).
 
 ## Operations
-- **Health:** `GET /healthz` returns `{"status":"ok","db":"ok","build":…,"commit":…}` (503 if the database doesn't answer).
+- **Health:** `GET /healthz` returns `{"status":"ok","db":"ok","build":…,"commit":…,"backups":{…}}` (503 if the database doesn't answer).
+- **Alerts:** the [Uptime workflow](.github/workflows/uptime.yml) checks `/healthz` from outside every 15 minutes. If the site is down or a backup is stale, the run fails and GitHub emails the repository owner.
 - **Metrics:** `GET /metrics` serves Prometheus text: HTTP rate and latency by route, WebSocket messages and handling time by move type, event-loop delay, memory, CPU, connections, rooms and usage totals. It's only served to the server itself and the private network, never through Cloudflare.
 - **Logs:** one JSON object per line (`server/log.js`), filterable with `journalctl --user -u count-trainer -o cat | jq 'select(.level=="error")'`.
 - **Usage:** `GET /api/stats` (accounts, hands, plays graded, battles), with shields.io badge endpoints at `/api/badge/hands|graded|battles|accounts`.
@@ -137,7 +138,13 @@ systemctl --user start count-trainer && systemctl --user restart litestream
 ```
 The R2 restore was tested on 2026-11-27: it came back with an `ok` integrity check and every table.
 
+**Monitoring:** every hour, `deploy/backup-status.sh` (run by `truecountlab-backup-status.timer`) checks both layers and writes `data/backup-status.json`, which `/healthz` reports as `backups`. The Uptime workflow fails, and GitHub emails you, if:
+- the newest local snapshot is over 27 hours old,
+- R2 is missing a change made more than 2 minutes before the check (it compares transaction ids, so a quiet day with no writes isn't an alarm), or
+- the hourly check itself stops running.
+
 **Check on it:**
+- `curl -s https://truecountlab.com/healthz | jq .backups`
 - `systemctl --user status litestream`
 - `journalctl --user -u litestream -o cat`
 - `litestream ltx -config ~/blackjack/deploy/litestream.yml ~/blackjack/data/truecountlab.db` lists what's in R2. It needs `.env` loaded, as in the restore steps.

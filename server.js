@@ -8,7 +8,7 @@ const path = require('path');
 const U = require('./server/util');
 const log = require('./server/log');
 const metrics = require('./server/metrics');
-const { db } = require('./server/db');
+const { db, DATA_DIR } = require('./server/db');
 const auth = require('./server/auth');
 const oauth = require('./server/oauth');
 const progress = require('./server/progress');
@@ -102,7 +102,26 @@ function serveStatic(req, res, pathname) {
 function health(res) {
   let dbOk = false;
   try { dbOk = db.prepare('SELECT 1 AS ok').get()?.ok === 1; } catch { /* reported below */ }
-  U.json(res, dbOk ? 200 : 503, { status: dbOk ? 'ok' : 'degraded', db: dbOk ? 'ok' : 'error', build: BUILD, commit: COMMIT, uptime: Math.round(process.uptime()) });
+  U.json(res, dbOk ? 200 : 503, { status: dbOk ? 'ok' : 'degraded', db: dbOk ? 'ok' : 'error', build: BUILD, commit: COMMIT, uptime: Math.round(process.uptime()), backups: backupStatus() });
+}
+
+/**
+ * What deploy/backup-status.sh found on its last hourly run, with times turned into ages.
+ * Backups don't change `status`: the app is healthy either way, and deploys wait on it.
+ * The Uptime workflow alerts on these fields instead.
+ * @returns {{ checkedMinAgo: number, localHoursAgo: number | null, replica: string, detail?: string } | null}
+ */
+function backupStatus() {
+  /** @type {{ checked?: string, local?: string, replica?: string, detail?: string }} */
+  let s;
+  try { s = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'backup-status.json'), 'utf8')); } catch { return null; }
+  const ago = (/** @type {string | undefined} */ iso, /** @type {number} */ unit) => (iso && Number.isFinite(Date.parse(iso)) ? Math.round(((Date.now() - Date.parse(iso)) / unit) * 10) / 10 : null);
+  return {
+    checkedMinAgo: ago(s.checked, 60e3) ?? -1,
+    localHoursAgo: ago(s.local, 3600e3),
+    replica: String(s.replica || 'unknown'),
+    ...(s.detail ? { detail: String(s.detail) } : {}),
+  };
 }
 
 const httpRequests = metrics.counter('http_requests_total', 'HTTP requests by route group and status class.');

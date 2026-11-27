@@ -1,0 +1,6 @@
+[Unit]
+Description=TrueCountLab: check that local and R2 backups are current
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/blackjack/deploy/backup-status.sh
