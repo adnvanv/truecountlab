@@ -87,12 +87,7 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     if (g.phase === 'shuffle' && lastPhase !== 'shuffle') {
       // The dealer is shuffling a new shoe: three riffles and the new-shoe pop-up.
       shuffleShoe();
-      const cut = g.newShoe === 'cut';
-      shoePopup(felt, {
-        title: cut ? 'Cut card: new shoe' : 'Fresh shoe',
-        sub: cut ? '75% of the shoe is dealt. The dealer shuffles all six decks.' : 'Six decks, shuffled.',
-        lines: ['Running count back to 0', `Bets back to ${money(g.minBet)}`],
-      }, Math.max(2200, (g.deadlineIn || 3200) - 200));
+      shoePopup(felt, { title: 'New shoe', line: `Count back to 0 · Bet ${money(g.minBet)}` });
     }
     const s = me();
     if (g.phase === 'settle' && lastPhase !== 'settle' && s?.net != null && s.hands.length) {

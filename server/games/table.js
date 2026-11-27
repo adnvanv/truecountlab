@@ -62,7 +62,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
   const MIN = C.RULES.minBet;
   const MAX_BET = 200;
   const BUY_IN = C.RULES.buyIn;
-  const T = { bet: 15000, insurance: 10000, turn: 20000, away: 4000, check: 20000, card: 550, settle: 4000, shuffle: 3200, between: 900 };
+  const T = { bet: 15000, insurance: 10000, turn: 20000, away: 4000, check: 20000, card: 550, settle: 4000, shuffle: 2000, between: 900 };
   const MAX_MISSED = 3; // rounds a dropped connection can miss before its seat is given up
   /** @type {Move[]} */
   const ACTS = ['H', 'S', 'D', 'P'];

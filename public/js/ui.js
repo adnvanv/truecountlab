@@ -141,30 +141,23 @@ export function dailyAccuracy(runs) {
   return [...days.entries()].sort((a, b) => a[0] - b[0]).map(([x, e]) => ({ x, acc: (100 * e.ok) / e.n, ms: e.msN ? e.ms / e.msN : null, n: e.n }));
 }
 
+/** How long the new-shoe text stays up, fade-out included (ms). */
+export const SHOE_POPUP_MS = 1800;
+
 /**
- * The new-shoe pop-up on the felt: a riffling deck, a title and what just reset
- * (the running count, the bet). Goes away by itself after `ms`, or when tapped.
+ * The new-shoe announcement: big gold text over the felt ("New shoe", then what reset).
+ * Gone after SHOE_POPUP_MS; tables wait that long before dealing.
  * @param {HTMLElement} felt
- * @param {{ title: string, sub?: string, lines?: string[] }} text
- * @param {number} [ms]
+ * @param {{ title: string, line?: string }} text
  */
-export function shoePopup(felt, { title, sub, lines = [] }, ms = 3200) {
+export function shoePopup(felt, { title, line }) {
   felt.querySelector('.shoe-popup')?.remove();
-  /** @type {HTMLElement} */
-  let el;
-  const close = () => {
-    if (!el.isConnected || el.classList.contains('out')) return;
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 320);
-  };
-  el = h('div', { class: 'shoe-popup', role: 'status', 'aria-live': 'assertive' },
-    h('div', { class: 'shoe-box', onclick: close, title: 'Tap to close' },
-      h('div', { class: 'riffle', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'), h('i')),
-      h('div', { class: 'shoe-title' }, title),
-      sub ? h('div', { class: 'shoe-sub' }, sub) : null,
-      lines.length ? h('ul', { class: 'shoe-lines' }, lines.map((l) => h('li', {}, l))) : null));
+  const el = h('div', { class: 'shoe-popup', role: 'status', 'aria-live': 'assertive' },
+    h('div', { class: 'shoe-title' }, title),
+    line ? h('div', { class: 'shoe-line' }, line) : null);
+  el.style.setProperty('--shoe-ms', `${SHOE_POPUP_MS}ms`);
   felt.append(el);
-  setTimeout(close, ms);
+  setTimeout(() => el.remove(), SHOE_POPUP_MS);
   return el;
 }
 

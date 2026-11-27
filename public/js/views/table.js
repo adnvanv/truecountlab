@@ -1,5 +1,5 @@
 // Full table simulation (mode 7) with sessions: $500 buy-in, stop-loss at the buy-in.
-import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct, shoePopup } from '../ui.js';
+import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct, shoePopup, SHOE_POPUP_MS } from '../ui.js';
 import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
 import { sfx, configure, shuffleShoe } from '../sfx.js';
 import { tally } from '../tally.js';
@@ -111,12 +111,10 @@ export function mount(root, ctx, { training = false } = {}) {
   // impossible to miss that the running count starts again from 0.
   // Returns how long the shuffle takes, so the dealer can wait for it.
   function announceNewShoe(kind) {
-    const title = { start: 'Fresh shoe', cut: 'Cut card: new shoe', manual: 'New shoe', empty: 'Shoe ran out: reshuffled' }[kind];
-    const sub = { start: 'Six decks, shuffled.', cut: '75% of the shoe is dealt. The dealer shuffles all six decks.', manual: 'Six decks, shuffled.', empty: 'The cards ran out mid-hand.' }[kind];
-    const lines = ['Running count back to 0'];
-    if (kind !== 'empty') lines.push(`Bet back to ${money(MIN)}`);
-    shoePopup(felt, { title, sub, lines });
-    return shuffleShoe();
+    const title = kind === 'empty' ? 'Reshuffled' : 'New shoe';
+    shoePopup(felt, { title, line: kind === 'empty' ? 'Count back to 0' : `Count back to 0 · Bet ${money(MIN)}` });
+    shuffleShoe();
+    return SHOE_POPUP_MS; // deal only once the text is gone
   }
 
   function note(msg, kind = '') {
@@ -654,7 +652,8 @@ export function mount(root, ctx, { training = false } = {}) {
     shoe.shuffle();
     rc = 0;
     shoeFresh = false;
-    announceNewShoe('manual');
+    busy = true; // no dealing until the new-shoe text is gone
+    setTimeout(() => { busy = false; if (alive) render(); }, announceNewShoe('manual'));
     hands = []; dealer = []; others = [];
     notes = [];
     setBet(MIN);
