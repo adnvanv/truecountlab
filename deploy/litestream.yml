@@ -1,9 +1,20 @@
 # Litestream: continuous backup of the SQLite database to S3-compatible storage
-# (Cloudflare R2). Every change is shipped within a second or so; a point-in-time copy
-# can be restored on any machine. Credentials and the bucket come from ~/blackjack/.env
+# (Cloudflare R2). Credentials and the bucket come from ~/blackjack/.env
 # (saved with: bash scripts/set-keys.sh r2).
 #
+# Tuned to stay inside R2's free tier (10 GB storage, 1M uploads, 10M reads a month).
+# Worst case, with the database changing every minute all month: about 43,200 syncs +
+# 4,320 + 720 compactions + 30 snapshots ≈ 48,000 uploads, under 5% of the free
+# allowance. When nothing changes, nothing is uploaded. Storage is a few MB (old
+# snapshots are deleted after 3 days, and deleting is free).
+#
 # Restore:  litestream restore -config deploy/litestream.yml -o restored.db $HOME/blackjack/data/truecountlab.db
+levels:
+  - interval: 10m
+  - interval: 1h
+snapshot:
+  interval: 24h
+  retention: 72h
 dbs:
   - path: ${HOME}/blackjack/data/truecountlab.db
     replica:
@@ -14,3 +25,5 @@ dbs:
       region: auto
       access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
       secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+      # At most one upload a minute (you can lose at most the last minute of changes).
+      sync-interval: 1m
