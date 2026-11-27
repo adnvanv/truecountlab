@@ -558,6 +558,11 @@ export function mount(root, ctx, { training = false } = {}) {
       bet = MIN; // fresh shoe, count 0: back to the table minimum
       note(`Cut card reached (75%): new shoe. Count back to 0, bet back to ${money(MIN)}.`, 'info');
       busy = true;
+      // Let the last hand's result show for a moment, then the dealer sweeps the table
+      // clear for the new shoe.
+      await step(1300);
+      if (dealer.length) sfx.collect();
+      hands = []; dealer = []; others = [];
       await step(announceNewShoe('cut'));
       busy = false;
     }
