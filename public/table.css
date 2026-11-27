@@ -465,3 +465,43 @@
 .table-view .fb-line.round.won { background: rgba(62, 224, 127, 0.07); border-left-color: rgba(62, 224, 127, 0.35); color: rgba(170, 230, 192, 0.8); }
 .table-view .fb-line.round.lost { background: rgba(255, 77, 64, 0.07); border-left-color: rgba(255, 77, 64, 0.35); color: rgba(240, 175, 168, 0.8); }
 .table-view .fb-line.round.even { background: rgba(255, 255, 255, 0.04); border-left-color: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }
+
+/* ==== New-shoe pop-up: the shoe was shuffled, so the count is back to 0 ==== */
+.shoe-popup { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; }
+.shoe-box {
+  pointer-events: auto; cursor: pointer; text-align: center; max-width: min(92%, 380px);
+  padding: 1rem 1.5rem 1.1rem; border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(30, 90, 62, 0.97), rgba(5, 26, 18, 0.97));
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 6px rgba(227, 188, 95, 0.16), 0 22px 60px rgba(0, 0, 0, 0.65);
+  animation: shoeIn 0.42s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.shoe-popup.out .shoe-box { animation: shoeOut 0.3s ease-in forwards; }
+.shoe-title { font: 700 1.55rem/1.15 Georgia, serif; color: var(--gold); letter-spacing: 0.01em; }
+.shoe-sub { margin-top: 0.25rem; color: var(--muted); font-size: 0.9rem; }
+.shoe-lines { list-style: none; margin: 0.65rem 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
+.shoe-lines li { padding: 0.2rem 0.65rem; border-radius: 999px; background: rgba(227, 188, 95, 0.16); color: var(--ink); font-weight: 700; font-size: 0.88rem; }
+/* Five card backs riffling into each other. */
+.riffle { position: relative; width: 86px; height: 46px; margin: 0 auto 0.55rem; }
+.riffle i {
+  position: absolute; top: 4px; left: 32px; width: 24px; height: 36px; border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #7a1d2a 0 4px, #8e2733 4px 8px); border: 2px solid #fbfaf6;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); animation: riffle 0.75s ease-in-out infinite;
+}
+.riffle i:nth-child(odd) { --dx: -26px; --rot: -14deg; }
+.riffle i:nth-child(even) { --dx: 26px; --rot: 14deg; }
+.riffle i:nth-child(2) { animation-delay: 0.08s; }
+.riffle i:nth-child(3) { animation-delay: 0.16s; }
+.riffle i:nth-child(4) { animation-delay: 0.24s; }
+.riffle i:nth-child(5) { animation-delay: 0.32s; }
+@keyframes riffle { 0%, 100% { transform: translateX(0) rotate(0); } 45% { transform: translateX(var(--dx)) rotate(var(--rot)); } }
+@keyframes shoeIn { from { transform: scale(0.6) translateY(16px); opacity: 0; } }
+@keyframes shoeOut { to { transform: scale(0.85); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .shoe-box, .shoe-popup.out .shoe-box, .riffle i { animation: none; }
+  .shoe-popup.out { display: none; }
+}
+@media (max-width: 640px) {
+  .shoe-box { padding: 0.8rem 1rem 0.9rem; }
+  .shoe-title { font-size: 1.3rem; }
+}

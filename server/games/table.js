@@ -62,7 +62,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
   const MIN = C.RULES.minBet;
   const MAX_BET = 200;
   const BUY_IN = C.RULES.buyIn;
-  const T = { bet: 15000, insurance: 10000, turn: 20000, away: 4000, check: 20000, card: 550, settle: 4000, shuffle: 2200, between: 900 };
+  const T = { bet: 15000, insurance: 10000, turn: 20000, away: 4000, check: 20000, card: 550, settle: 4000, shuffle: 3200, between: 900 };
   const MAX_MISSED = 3; // rounds a dropped connection can miss before its seat is given up
   /** @type {Move[]} */
   const ACTS = ['H', 'S', 'D', 'P'];
@@ -90,6 +90,8 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       this.shoe = new C.Shoe();
       this.rc = 0;
       this.fresh = true;
+      /** @type {'start' | 'cut'} why the next shuffle happens (shown in the browser's new-shoe pop-up) */
+      this.shuffleKind = 'start';
       /** @type {(Seat | null)[]} */
       this.seats = Array(SEATS).fill(null);
       /** @type {Card[]} */
@@ -234,8 +236,26 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       });
     }
 
+    // The dealer shuffles a new shoe (at the start, and after the cut card) with everyone
+    // watching: the table is cleared and browsers show the new-shoe pop-up.
+    async shuffleShoe() {
+      this.fresh = false;
+      this.dealer = [];
+      for (const s of this.seats) if (s) { s.hands = []; s.net = null; }
+      this.turn = null;
+      this.phase = 'shuffle';
+      this.deadline = Date.now() + ms(T.shuffle);
+      this.event(this.shuffleKind === 'cut'
+        ? 'Cut card: the dealer shuffles a new shoe. Running count back to 0, bets back to $25.'
+        : 'The dealer shuffles a fresh shoe. Running count starts at 0.');
+      this.room.changed();
+      await this.sleep(T.shuffle);
+    }
+
     async loop() {
       while (!this.dead && this.seats.some(Boolean)) {
+        if (this.fresh) await this.shuffleShoe();
+        if (this.dead) return;
         await this.betting();
         if (this.dead) return;
         const players = this.seats.filter(/** @type {(s: Seat | null) => s is Seat} */ ((s) => Boolean(s && Number(s.bet) > 0)));
@@ -287,14 +307,6 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       this.rounds++;
       this.dealer = [];
       for (const s of players) { const bet = Number(s.bet); s.missed = 0; s.stack -= bet; s.hands = [{ cards: [], bet }]; }
-      if (this.fresh) {
-        this.fresh = false;
-        this.phase = 'shuffle';
-        this.deadline = Date.now() + ms(T.shuffle);
-        this.event('The dealer shuffles a fresh shoe. Count starts at 0.');
-        this.room.changed();
-        await this.sleep(T.shuffle);
-      }
       this.phase = 'dealing';
       for (let r = 0; r < 2; r++) {
         for (const s of players) await this.dealTo(s.hands[0].cards);
@@ -512,8 +524,8 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       if (this.shoe.pastCut) {
         this.shoe.shuffle();
         this.rc = 0;
-        this.fresh = true;
-        this.event('Cut card reached. New shoe next hand: count back to 0, bets back to $25.');
+        this.fresh = true; // the loop shuffles before the next bets
+        this.shuffleKind = 'cut';
       }
     }
 
@@ -602,6 +614,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         kind: 'table',
         phase: this.phase,
         deadlineIn: ['betting', 'insurance', 'play', 'check', 'settle', 'shuffle'].includes(this.phase) ? Math.max(0, this.deadline - Date.now()) : null,
+        newShoe: this.phase === 'shuffle' ? this.shuffleKind : null,
         dealt: this.shoe.dealt,
         decks: C.RULES.decks,
         rules: C.RULES.text,

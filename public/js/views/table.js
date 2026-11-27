@@ -1,7 +1,7 @@
 // Full table simulation (mode 7) with sessions: $500 buy-in, stop-loss at the buy-in.
-import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct } from '../ui.js';
+import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct, shoePopup } from '../ui.js';
 import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
-import { sfx, configure, shuffleMs } from '../sfx.js';
+import { sfx, configure, shuffleShoe } from '../sfx.js';
 import { tally } from '../tally.js';
 import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS } from '../strategy.js';
 
@@ -51,6 +51,7 @@ export function mount(root, ctx, { training = false } = {}) {
     h('svg:path', { id: `${arcId}b`, d: 'M 70 42 Q 300 160 530 42', fill: 'none' }),
     h('svg:text', { class: 'arc-big' }, h('svg:textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' }, 'BLACKJACK PAYS 3 TO 2')),
     h('svg:text', { class: 'arc-small' }, h('svg:textPath', { href: `#${arcId}b`, startOffset: '50%', 'text-anchor': 'middle' }, 'Dealer stands on all 17s · Insurance pays 2 to 1')));
+  const felt = h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone);
   root.append(h('section', { class: `view table-view${training ? ' training' : ''}` },
     training
       ? h('div', { class: 'training-bar' },
@@ -60,7 +61,7 @@ export function mount(root, ctx, { training = false } = {}) {
     mhud,
     // Desktop: stats, cheat panel and the hand log live in a side column so the table fits one screen.
     h('aside', { class: 'side' }, hud, training ? cheatPanel : null, fb),
-    h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone),
+    felt,
     h('div', { class: 'dock' }, controls)));
 
   // ---- helpers -----------------------------------------------------------
@@ -92,7 +93,7 @@ export function mount(root, ctx, { training = false } = {}) {
   }
 
   function draw(faceDown = false) {
-    if (shoe.remaining === 0) { shoe.shuffle(); rc = 0; sfx.shuffle(); note('Shoe ran out mid-round — reshuffled, count reset.', 'warn'); }
+    if (shoe.remaining === 0) { shoe.shuffle(); rc = 0; announceNewShoe('empty'); note('Shoe ran out mid-round: reshuffled, count reset.', 'warn'); }
     const c = shoe.draw();
     c.anim = true;
     sfx.deal();
@@ -104,6 +105,18 @@ export function mount(root, ctx, { training = false } = {}) {
     render();
     await sleep(ms);
     if (!alive) throw ABORT;
+  }
+
+  // The shoe was just shuffled: three riffles and a pop-up on the felt, so it's
+  // impossible to miss that the running count starts again from 0.
+  // Returns how long the shuffle takes, so the dealer can wait for it.
+  function announceNewShoe(kind) {
+    const title = { start: 'Fresh shoe', cut: 'Cut card: new shoe', manual: 'New shoe', empty: 'Shoe ran out: reshuffled' }[kind];
+    const sub = { start: 'Six decks, shuffled.', cut: '75% of the shoe is dealt. The dealer shuffles all six decks.', manual: 'Six decks, shuffled.', empty: 'The cards ran out mid-hand.' }[kind];
+    const lines = ['Running count back to 0'];
+    if (kind !== 'empty') lines.push(`Bet back to ${money(MIN)}`);
+    shoePopup(felt, { title, sub, lines });
+    return shuffleShoe();
   }
 
   function note(msg, kind = '') {
@@ -373,9 +386,8 @@ export function mount(root, ctx, { training = false } = {}) {
     sfx.chip(2);
     if (shoeFresh) {
       shoeFresh = false;
-      note('Shuffling…', 'info');
-      sfx.shuffle();
-      await step(shuffleMs());
+      note('Shuffling a fresh shoe…', 'info');
+      await step(announceNewShoe('start'));
     }
     sess().stack -= bet;
     insuranceBet = 0;
@@ -544,9 +556,12 @@ export function mount(root, ctx, { training = false } = {}) {
     if (shoe.pastCut) {
       shoe.shuffle();
       rc = 0;
-      shoeFresh = true;
+      shoeFresh = false; // shuffled now, so the next deal doesn't shuffle again
       bet = MIN; // fresh shoe, count 0: back to the table minimum
-      note(`Cut card reached (75%) — the dealer shuffles before the next hand. Count back to 0, bet back to ${money(MIN)}.`, 'info');
+      note(`Cut card reached (75%): new shoe. Count back to 0, bet back to ${money(MIN)}.`, 'info');
+      busy = true;
+      await step(announceNewShoe('cut'));
+      busy = false;
     }
     phase = 'bet';
     if (training && stack() < MIN) {
@@ -639,7 +654,7 @@ export function mount(root, ctx, { training = false } = {}) {
     shoe.shuffle();
     rc = 0;
     shoeFresh = false;
-    sfx.shuffle();
+    announceNewShoe('manual');
     hands = []; dealer = []; others = [];
     notes = [];
     setBet(MIN);

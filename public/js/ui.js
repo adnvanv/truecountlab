@@ -141,6 +141,33 @@ export function dailyAccuracy(runs) {
   return [...days.entries()].sort((a, b) => a[0] - b[0]).map(([x, e]) => ({ x, acc: (100 * e.ok) / e.n, ms: e.msN ? e.ms / e.msN : null, n: e.n }));
 }
 
+/**
+ * The new-shoe pop-up on the felt: a riffling deck, a title and what just reset
+ * (the running count, the bet). Goes away by itself after `ms`, or when tapped.
+ * @param {HTMLElement} felt
+ * @param {{ title: string, sub?: string, lines?: string[] }} text
+ * @param {number} [ms]
+ */
+export function shoePopup(felt, { title, sub, lines = [] }, ms = 3200) {
+  felt.querySelector('.shoe-popup')?.remove();
+  /** @type {HTMLElement} */
+  let el;
+  const close = () => {
+    if (!el.isConnected || el.classList.contains('out')) return;
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  };
+  el = h('div', { class: 'shoe-popup', role: 'status', 'aria-live': 'assertive' },
+    h('div', { class: 'shoe-box', onclick: close, title: 'Tap to close' },
+      h('div', { class: 'riffle', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'), h('i')),
+      h('div', { class: 'shoe-title' }, title),
+      sub ? h('div', { class: 'shoe-sub' }, sub) : null,
+      lines.length ? h('ul', { class: 'shoe-lines' }, lines.map((l) => h('li', {}, l))) : null));
+  felt.append(el);
+  setTimeout(close, ms);
+  return el;
+}
+
 let toastTimer;
 export function toast(msg) {
   const t = document.getElementById('toast');

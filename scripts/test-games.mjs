@@ -301,9 +301,37 @@ try {
     t.destroy();
   }
   {
-    const { t } = await playHand({ ranks: ['10', '10', '9', '7'], plan: stand, keepGoing: true, setup: (x) => { x.shoe.cutIndex = 2; } });
-    await until(() => t.fresh, 3000, 'reshuffle');
+    // Record what browsers are sent, so the short shuffle phase can't slip between polls.
+    /** @type {{ phase: string, newShoe: string | null }[]} */
+    const sentFrames = [];
+    const { t } = await playHand({
+      ranks: ['10', '10', '9', '7'], plan: stand, keepGoing: true,
+      setup: (x, room) => {
+        x.shoe.cutIndex = 2;
+        room.changed = () => { const v = x.view('p1'); sentFrames.push({ phase: v.phase, newShoe: v.newShoe }); };
+      },
+    });
+    await until(() => sentFrames.some((v) => v.newShoe === 'cut'), 3000, 'cut-card shuffle');
+    const shuffleAt = sentFrames.findIndex((v) => v.newShoe === 'cut');
     ok(t.rc === 0 && t.shoe.dealt === 0, 'past the cut card: a new shoe and the count resets');
+    ok(t.events.some((e) => /Cut card: the dealer shuffles a new shoe/.test(e)), 'browsers are told it was the cut card (for the new-shoe pop-up)');
+    await until(() => sentFrames.slice(shuffleAt).some((v) => v.phase === 'betting'), 3000, 'betting after the shuffle');
+    ok(sentFrames.slice(shuffleAt + 1).findIndex((v) => v.phase === 'betting') >= 0 && sentFrames[shuffleAt].phase === 'shuffle',
+      'the shuffle comes before the next bets, not after them');
+    t.destroy();
+  }
+  {
+    // A brand-new table: the opening shuffle happens before anyone is asked to bet.
+    const room = fakeRoom();
+    const t = new Table(room);
+    /** @type {{ phase: string, newShoe: string | null }[]} */
+    const sentFrames = [];
+    room.changed = () => { const v = t.view('p1'); sentFrames.push({ phase: v.phase, newShoe: v.newShoe }); };
+    t.sit(room.add('p1'), 0);
+    await until(() => sentFrames.some((v) => v.phase === 'betting'), 3000, 'first bets');
+    const firstShuffle = sentFrames.findIndex((v) => v.newShoe === 'start');
+    const firstBet = sentFrames.findIndex((v) => v.phase === 'betting');
+    ok(firstShuffle >= 0 && firstShuffle < firstBet, 'a new table shows the fresh-shoe shuffle before the first bets');
     t.destroy();
   }
 

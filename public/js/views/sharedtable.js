@@ -1,8 +1,8 @@
 // Shared blackjack table inside an online room, drawn like the solo table: the big felt,
 // your hand in the middle at full size, the other players beside you, your controls in
 // the dock and your private hand log in the side column. The server deals and grades.
-import { h, cardEl, trayEl, numberField, signed, money, typingInField, pct } from '../ui.js';
-import { sfx, configure } from '../sfx.js';
+import { h, cardEl, trayEl, numberField, signed, money, typingInField, pct, shoePopup } from '../ui.js';
+import { sfx, configure, shuffleShoe } from '../sfx.js';
 import * as online from '../online.js';
 
 const ACTS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
@@ -40,11 +40,12 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     h('svg:text', { class: 'arc-small' }, h('svg:textPath', { href: '#arc-onlineb', startOffset: '50%', 'text-anchor': 'middle' }, 'Dealer stands on all 17s · Insurance pays 2 to 1')));
   const eventLine = h('div', { class: 'st-event', 'aria-live': 'polite' });
   const controls = h('div', { class: 'controls' });
+  const felt = h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone);
   const el = h('section', { class: 'view table-view online-table' },
     h('div', { class: 'rules-line st-bar' }, bar),
     mhud,
     h('aside', { class: 'side' }, hud, fb, chat),
-    h('div', { class: 'felt' }, trayBox, shoeEl, dealerZone, arc, seatsZone),
+    felt,
     h('div', { class: 'dock' }, eventLine, controls));
 
   let g = null;
@@ -83,7 +84,16 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
   const canLeaveSeat = () => !me()?.hands.length || ['idle', 'betting', 'settle', 'check'].includes(g.phase);
 
   function sounds() {
-    if (g.phase === 'shuffle' && lastPhase !== 'shuffle') sfx.shuffle();
+    if (g.phase === 'shuffle' && lastPhase !== 'shuffle') {
+      // The dealer is shuffling a new shoe: three riffles and the new-shoe pop-up.
+      shuffleShoe();
+      const cut = g.newShoe === 'cut';
+      shoePopup(felt, {
+        title: cut ? 'Cut card: new shoe' : 'Fresh shoe',
+        sub: cut ? '75% of the shoe is dealt. The dealer shuffles all six decks.' : 'Six decks, shuffled.',
+        lines: ['Running count back to 0', `Bets back to ${money(g.minBet)}`],
+      }, Math.max(2200, (g.deadlineIn || 3200) - 200));
+    }
     const s = me();
     if (g.phase === 'settle' && lastPhase !== 'settle' && s?.net != null && s.hands.length) {
       if (s.hands.some((hd) => hd.result?.text === 'Blackjack!')) sfx.blackjack();

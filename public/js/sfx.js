@@ -214,3 +214,14 @@ export const sfx = {
   wrong: play((a) => tone(a, { f: 196, f2: 165, dur: 0.18, type: 'sawtooth', gain: 0.03 })),
   click: play((a) => noise(a, { dur: 0.02, type: 'highpass', f: 4000, gain: 0.12, attack: 0.001 })),
 };
+
+/**
+ * A full shoe shuffle: three riffles back to back, like a dealer working six fresh decks.
+ * Returns how long it lasts (ms), so the table can wait for it.
+ * @param {number} [riffles]
+ */
+export function shuffleShoe(riffles = 3) {
+  const gap = Math.max(380, shuffleMs() - 180);
+  for (let i = 0; i < riffles; i++) setTimeout(() => sfx.shuffle(), i * gap);
+  return gap * riffles + 150;
+}
