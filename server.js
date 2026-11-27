@@ -37,6 +37,8 @@ const TYPES = {
   '.ogg': 'audio/ogg',
   '.m4a': 'audio/mp4',
   '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.jpg': 'image/jpeg',
 };
 
 // Every deploy gets a new build id (a hash of everything in public/). Pages load their
@@ -77,6 +79,13 @@ function serveStatic(req, res, pathname) {
   }
   if (p === '/') p = '/index.html';
   if (p === '/privacy') p = '/privacy.html';
+  // The Learn guides have clean URLs: /learn and /learn/<guide>, no .html and no trailing slash.
+  if (/^\/learn(\/[a-z-]+)?\/$/.test(p) || /^\/learn\/[a-z-]+\.html$/.test(p)) {
+    res.writeHead(301, { location: p.replace(/\/$/, '').replace(/\.html$/, '').replace(/\/index$/, '') });
+    return res.end();
+  }
+  if (p === '/learn') p = '/learn/index.html';
+  else if (/^\/learn\/[a-z-]+$/.test(p)) p += '.html';
   const file = path.normalize(path.join(ROOT, p));
   if (!file.startsWith(ROOT + path.sep)) return U.send(res, 403, 'Forbidden');
   fs.stat(file, (err, st) => {

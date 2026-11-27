@@ -5,6 +5,7 @@ import { readiness } from '../readiness.js';
 import { currentUser } from '../store.js';
 
 const MODES = [
+  ['/learn', 'Learn to Count', 'New to counting? Step-by-step guides, from Hi-Lo to index plays.'],
   ['#countdown', 'Countdown', '15–20 cards, then name the count.'],
   ['#truecount', 'True Count', 'Running count ÷ decks from the tray.'],
   ['#basic', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],

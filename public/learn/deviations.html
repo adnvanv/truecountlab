@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Blackjack Index Plays: Hi-Lo Deviations from Basic Strategy · TrueCountLab</title>
+  <meta name="description" content="The Hi-Lo index plays every card counter should know: when to take insurance, stand on 16 vs 10, double 10 vs 10 and more, with true count indices and a free drill.">
+  <link rel="canonical" href="https://truecountlab.com/learn/deviations">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="TrueCountLab">
+  <meta property="og:title" content="Blackjack index plays (Hi-Lo deviations)">
+  <meta property="og:description" content="When the true count changes the right play, with indices and a free drill.">
+  <meta property="og:url" content="https://truecountlab.com/learn/deviations">
+  <meta property="og:image" content="https://truecountlab.com/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0b3326">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="learn.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "TrueCountLab", "item": "https://truecountlab.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Learn", "item": "https://truecountlab.com/learn" },
+          { "@type": "ListItem", "position": 3, "name": "Index plays", "item": "https://truecountlab.com/learn/deviations" }
+        ]
+      },
+      {
+        "@type": "Article",
+        "headline": "Blackjack index plays: Hi-Lo deviations from basic strategy",
+        "description": "When the true count changes the right play, with indices for a six-deck game and a free drill.",
+        "url": "https://truecountlab.com/learn/deviations",
+        "image": "https://truecountlab.com/og.jpg",
+        "datePublished": "2026-11-27",
+        "dateModified": "2026-11-27",
+        "inLanguage": "en",
+        "author": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" },
+        "publisher": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo" aria-hidden="true">♠</span><span>TrueCountLab</span></a>
+    <nav class="learn-nav" aria-label="Site">
+      <a href="/learn">Learn</a>
+      <a class="btn primary sm" href="/#deviation">Start practicing</a>
+    </nav>
+  </header>
+  <main class="learn">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/learn">Learn</a> › Index plays</nav>
+    <article>
+      <h1>Index plays: when the count changes the play</h1>
+      <p class="lede">Basic strategy assumes a neutral shoe. Once you're counting, you know when the shoe is rich or poor in tens, and for some hands that flips the right decision. Each of these plays has an <strong>index</strong>: the true count at which you switch.</p>
+
+      <h2>How to read an index</h2>
+      <p>An index of +4 on "10 vs 10: double" means: at a true count of +4 or higher, double. Below +4, play basic strategy (hit). Negative indices work the same way: "12 vs 5, stand at −2" means stand at −2 or higher, and hit below −2. These indices are for Hi-Lo in a six-deck game where the dealer stands on soft 17, the same game as the <a href="/learn/basic-strategy">basic strategy chart</a>.</p>
+
+      <h2>Learn these first</h2>
+      <p>A small set of plays does most of the work. Many counters know them as the <em>Illustrious 18</em>, a list ranked by how much each play is worth. Start here:</p>
+      <ol>
+        <li><strong>Insurance at +3.</strong> The single most valuable index. At +3 the shoe has enough tens that insurance is a winning bet.</li>
+        <li><strong>16 vs 10: stand at 0 or higher.</strong> You'll face this hand constantly. Any positive count means stand.</li>
+        <li><strong>15 vs 10: stand at +4.</strong></li>
+        <li><strong>10 vs 10 and 10 vs ace: double at +4.</strong></li>
+        <li><strong>12 vs 2 at +3 and 12 vs 3 at +2: stand.</strong></li>
+      </ol>
+
+      <h2>The full list</h2>
+      <p>Every index play the TrueCountLab Deviations drill and table use:</p>
+      <!-- gen:devs -->
+      <h3>Core</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hand</th><th>Index</th><th>Index play</th><th>Below the index</th></tr></thead>
+          <tbody>
+            <tr><td>Insurance (dealer shows A)</td><td><strong>+3</strong></td><td>Take insurance at +3 or higher</td><td>Decline</td></tr>
+            <tr><td>16 vs 10</td><td><strong>0</strong></td><td>Stand at 0 or higher</td><td>Hit</td></tr>
+            <tr><td>15 vs 10</td><td><strong>+4</strong></td><td>Stand at +4 or higher</td><td>Hit</td></tr>
+            <tr><td>12 vs 3</td><td><strong>+2</strong></td><td>Stand at +2 or higher</td><td>Hit</td></tr>
+            <tr><td>12 vs 2</td><td><strong>+3</strong></td><td>Stand at +3 or higher</td><td>Hit</td></tr>
+            <tr><td>10 vs 10</td><td><strong>+4</strong></td><td>Double at +4 or higher</td><td>Hit</td></tr>
+            <tr><td>10 vs A</td><td><strong>+4</strong></td><td>Double at +4 or higher</td><td>Hit</td></tr>
+            <tr><td>9 vs 2</td><td><strong>+1</strong></td><td>Double at +1 or higher</td><td>Hit</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Low-count hits</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hand</th><th>Index</th><th>Index play</th><th>Below the index</th></tr></thead>
+          <tbody>
+            <tr><td>12 vs 4</td><td><strong>0</strong></td><td>Stand at 0 or higher</td><td>Hit below 0</td></tr>
+            <tr><td>12 vs 5</td><td><strong>−2</strong></td><td>Stand at −2 or higher</td><td>Hit below −2</td></tr>
+            <tr><td>12 vs 6</td><td><strong>−1</strong></td><td>Stand at −1 or higher</td><td>Hit below −1</td></tr>
+            <tr><td>13 vs 2</td><td><strong>0</strong></td><td>Stand at 0 or higher</td><td>Hit below 0</td></tr>
+            <tr><td>13 vs 3</td><td><strong>−1</strong></td><td>Stand at −1 or higher</td><td>Hit below −1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Extra doubles/stands</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hand</th><th>Index</th><th>Index play</th><th>Below the index</th></tr></thead>
+          <tbody>
+            <tr><td>11 vs A</td><td><strong>+1</strong></td><td>Double at +1 or higher</td><td>Hit</td></tr>
+            <tr><td>9 vs 7</td><td><strong>+3</strong></td><td>Double at +3 or higher</td><td>Hit</td></tr>
+            <tr><td>8 vs 6</td><td><strong>+2</strong></td><td>Double at +2 or higher</td><td>Hit</td></tr>
+            <tr><td>8 vs 5</td><td><strong>+4</strong></td><td>Double at +4 or higher</td><td>Hit</td></tr>
+            <tr><td>16 vs 9</td><td><strong>+5</strong></td><td>Stand at +5 or higher</td><td>Hit</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Surrender</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hand</th><th>Index</th><th>Index play</th><th>Below the index</th></tr></thead>
+          <tbody>
+            <tr><td>15 vs 10</td><td><strong>0</strong></td><td>Surrender at 0 or higher</td><td>Play the hand normally</td></tr>
+            <tr><td>14 vs 10</td><td><strong>+3</strong></td><td>Surrender at +3 or higher</td><td>Play the hand normally</td></tr>
+            <tr><td>15 vs 9</td><td><strong>+2</strong></td><td>Surrender at +2 or higher</td><td>Play the hand normally</td></tr>
+            <tr><td>15 vs A</td><td><strong>+1</strong></td><td>Surrender at +1 or higher</td><td>Play the hand normally</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /gen:devs -->
+      <p>Surrender plays apply only where late surrender is offered. Turn on the surrender option in the trainer's settings to practice them.</p>
+
+      <h2>Tips</h2>
+      <ul>
+        <li><strong>Master basic strategy first.</strong> Index plays are a refinement. Mistakes in basic strategy cost far more than missing an index.</li>
+        <li><strong>Learn in groups.</strong> Start with the five above, get them perfect at speed, then add the next few.</li>
+        <li><strong>Use the true count, not the running count.</strong> The indices only mean something after dividing by decks remaining.</li>
+        <li><strong>Notice the low-count hits.</strong> At negative counts there are fewer tens to bust you, so some stands (like 12 vs 4) turn into hits.</li>
+      </ul>
+      <div class="callout">
+        <p><strong>Practice:</strong> the <a href="/#deviation">Deviations drill</a> shows a hand, a dealer upcard and a true count, and asks whether this is a basic play or an index play. It tracks every index separately so you can see which ones you still miss.</p>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="/#deviation">Drill index plays</a>
+        <a class="btn" href="/#table">Play a full shoe</a>
+      </div>
+    </article>
+
+    <nav class="next-prev" aria-label="Guide">
+      <a href="/learn/basic-strategy"><small>Step 3</small>← Basic strategy chart</a>
+      <a href="/learn/how-to-count-cards#betting"><small>Step 5</small>Betting with the count →</a>
+    </nav>
+  </main>
+  <footer class="site-footer">
+    <a href="/">Trainer</a>
+    <a href="/learn">Learn</a>
+    <a href="/learn/how-to-count-cards">How to count cards</a>
+    <a href="/learn/true-count">True count</a>
+    <a href="/learn/basic-strategy">Basic strategy chart</a>
+    <a href="/learn/deviations">Index plays</a>
+    <a href="/privacy">Privacy</a>
+    <span class="note">TrueCountLab is a free practice tool. Play money only: no gambling, no ads.</span>
+  </footer>
+</body>
+</html>

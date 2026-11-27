@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How to Count Cards in Blackjack: Hi-Lo for Beginners · TrueCountLab</title>
+  <meta name="description" content="How to count cards in blackjack with the Hi-Lo system: card values, keeping a running count, a worked example, how to bet with the count, and drills to practice.">
+  <link rel="canonical" href="https://truecountlab.com/learn/how-to-count-cards">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="TrueCountLab">
+  <meta property="og:title" content="How to count cards in blackjack (Hi-Lo for beginners)">
+  <meta property="og:description" content="Card values, the running count, a worked example, and how to bet with the count.">
+  <meta property="og:url" content="https://truecountlab.com/learn/how-to-count-cards">
+  <meta property="og:image" content="https://truecountlab.com/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0b3326">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="learn.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "TrueCountLab", "item": "https://truecountlab.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Learn", "item": "https://truecountlab.com/learn" },
+          { "@type": "ListItem", "position": 3, "name": "How to count cards", "item": "https://truecountlab.com/learn/how-to-count-cards" }
+        ]
+      },
+      {
+        "@type": "Article",
+        "headline": "How to count cards in blackjack: Hi-Lo for beginners",
+        "description": "Card values, keeping a running count, a worked example, how to bet with the count, and drills to practice.",
+        "url": "https://truecountlab.com/learn/how-to-count-cards",
+        "image": "https://truecountlab.com/og.jpg",
+        "datePublished": "2026-11-27",
+        "dateModified": "2026-11-27",
+        "inLanguage": "en",
+        "author": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" },
+        "publisher": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo" aria-hidden="true">♠</span><span>TrueCountLab</span></a>
+    <nav class="learn-nav" aria-label="Site">
+      <a href="/learn">Learn</a>
+      <a class="btn primary sm" href="/#countdown">Start practicing</a>
+    </nav>
+  </header>
+  <main class="learn">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/learn">Learn</a> › How to count cards</nav>
+    <article>
+      <h1>How to count cards in blackjack</h1>
+      <p class="lede">Card counting means keeping track of which cards have already been dealt, so you know when the cards still in the shoe favor you. The most popular way to do it is the Hi-Lo count, and it's simple enough to learn tonight.</p>
+
+      <h2>Why counting works</h2>
+      <p>Blackjack is dealt from a shoe that isn't reshuffled after every hand, so what's already been played changes what's left. When the remaining cards are rich in tens and aces, the player benefits:</p>
+      <ul>
+        <li>Blackjacks become more common, and they pay you 3 to 2 while the dealer only wins even money with one.</li>
+        <li>The dealer must hit stiff hands (12 to 16) and busts more often when tens are plentiful. You can choose to stand.</li>
+        <li>Doubling down on 10 and 11 works better, because a ten is more likely to land on your double.</li>
+      </ul>
+      <p>When the remaining cards are mostly small, the house edge grows instead. A count tells you which situation you're in, so you can bet more when the deck is good and less when it isn't.</p>
+
+      <h2>The Hi-Lo card values</h2>
+      <p>Every card gets one of three values. You only ever add or subtract one.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cards</th><th>Value</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>2, 3, 4, 5, 6</td><td><strong>+1</strong></td><td>Small cards leaving the shoe make what's left richer in tens and aces.</td></tr>
+            <tr><td>7, 8, 9</td><td><strong>0</strong></td><td>Neutral: ignore them.</td></tr>
+            <tr><td>10, J, Q, K, A</td><td><strong>−1</strong></td><td>Big cards leaving the shoe make what's left worse for you.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>There are five +1 ranks and five −1 ranks, so a full deck adds up to exactly zero. That makes Hi-Lo a <em>balanced</em> count, and it gives you a built-in way to check yourself: if you count through an entire deck and don't end on 0, you made a mistake.</p>
+
+      <h2>Keeping the running count</h2>
+      <p>Start at 0 when the dealer shuffles. Then, for every card you see (yours, the dealer's and every other player's), add its value. That total is the <strong>running count</strong>. Carry it from hand to hand until the next shuffle.</p>
+      <h3>A worked example</h3>
+      <p>Say these ten cards come out over the first two hands:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Card</th><th>K</th><th>5</th><th>7</th><th>3</th><th>A</th><th>6</th><th>9</th><th>2</th><th>10</th><th>4</th></tr></thead>
+          <tbody>
+            <tr><th>Value</th><td>−1</td><td>+1</td><td>0</td><td>+1</td><td>−1</td><td>+1</td><td>0</td><td>+1</td><td>−1</td><td>+1</td></tr>
+            <tr><th>Running count</th><td>−1</td><td>0</td><td>0</td><td>+1</td><td>0</td><td>+1</td><td>+1</td><td>+2</td><td>+1</td><td>+2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The running count is <strong>+2</strong>: slightly more small cards than big ones have come out, so the rest of the shoe is slightly rich in tens and aces.</p>
+
+      <h3>Count faster by cancelling pairs</h3>
+      <p>Strong counters don't add every card one at a time. They look at cards in groups and cancel them: a 5 and a king together are worth 0, so they skip that pair entirely. A hand of 4 and 6 is +2 at a glance. Practicing in pairs is how you get fast enough to keep up with a real dealer.</p>
+
+      <div class="callout">
+        <p><strong>Practice: count down a deck.</strong> Deal a single deck one card at a time and keep the running count. You should finish on 0. Aim for under 30 seconds with no mistakes, then under 20. The <a href="/#countdown">Countdown drill</a> does this for you, times you and tells you when you're off.</p>
+      </div>
+
+      <h2>From running count to true count</h2>
+      <p>A running count of +6 is great with one deck left in the shoe and nearly meaningless with five decks left, because the extra tens are spread across many more cards. So before you act on the count, you divide it by the number of decks still to be dealt. The result is the <strong>true count</strong>, and it's the number you actually bet and play by.</p>
+      <p>For example, a running count of +6 with about 3 decks left is a true count of +2. The <a href="/learn/true-count">true count guide</a> covers how to estimate the decks remaining from the discard tray, and how to round.</p>
+
+      <h2 id="betting">Betting with the count</h2>
+      <p>Off the top of a fresh shoe, a basic strategy player is at a small disadvantage, around half a percent in a typical six-deck game. Each +1 of true count shifts the game about half a percent in your favor. So the player usually has the edge once the true count reaches about +1 or +2.</p>
+      <p>That's the whole idea of the bet: bet the table minimum while the count is low or negative, and raise your bet as the true count climbs. A simple ramp looks like this:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>True count</th><th>Bet</th><th>Example ($25 table)</th></tr></thead>
+          <tbody>
+            <tr><td>+1 or lower</td><td>1 unit</td><td>$25</td></tr>
+            <tr><td>+2 to +3</td><td>2 units</td><td>$50</td></tr>
+            <tr><td>+4 or higher</td><td>3 units</td><td>$75</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>That's the ramp the TrueCountLab table uses, and it's a good one to learn with. Real counters often spread wider, from 1 unit up to 8 or more in a six-deck game, because a bigger spread earns more but swings harder. How wide you can safely spread depends on your bankroll: the <a href="/#calculator">bankroll calculator</a> shows the expected win per hour and the risk of losing it all for any spread.</p>
+
+      <h2>Using the count to change how you play</h2>
+      <p>The count also changes some decisions. The best-known is insurance: basic strategy says never take it, but with Hi-Lo it becomes a good bet once the true count is +3 or higher. A handful of these <em>index plays</em> add real value. Learn them only after basic strategy is automatic. See <a href="/learn/deviations">index plays</a>.</p>
+
+      <h2>Common beginner mistakes</h2>
+      <ul>
+        <li><strong>Skipping basic strategy.</strong> Counting is worth about one percent; sloppy basic strategy can easily cost more than that. Learn the <a href="/learn/basic-strategy">chart</a> first or alongside.</li>
+        <li><strong>Betting on the running count.</strong> Always convert to the true count before you size a bet.</li>
+        <li><strong>Losing the count while talking or deciding.</strong> Practice keeping it while you play your own hand. The <a href="/#table">table</a> asks you for the count at random moments to check.</li>
+        <li><strong>Forgetting the dealer's hole card.</strong> Count it when it's turned over, and count every card on the table, not just yours.</li>
+        <li><strong>Jumping your bet in one go.</strong> Going from the minimum to the maximum in a single hand is the easiest thing for a casino to notice.</li>
+        <li><strong>Underestimating the swings.</strong> Even with an edge, losing streaks of many hours are normal. Never play with money you can't afford to lose.</li>
+      </ul>
+
+      <h2>Your practice plan</h2>
+      <ol>
+        <li>Learn the values until you don't have to think about them.</li>
+        <li>Count down a deck every day: accuracy first, then speed. <a href="/#countdown">Countdown drill</a></li>
+        <li>Practice the true count conversion. <a href="/#truecount">True Count drill</a></li>
+        <li>Drill basic strategy until every decision is instant. <a href="/#basic">Basic Strategy drill</a></li>
+        <li>Put it together at full speed. Start at the <a href="/#training">Training Table</a>, which shows the right answers, then move to the <a href="/#table">real Table</a>.</li>
+      </ol>
+      <div class="cta">
+        <a class="btn primary" href="/#countdown">Try the Countdown drill</a>
+        <a class="btn" href="/learn/true-count">Next: the true count</a>
+      </div>
+    </article>
+
+    <nav class="next-prev" aria-label="Guide">
+      <a href="/learn"><small>Back</small>← Learn to count cards</a>
+      <a href="/learn/true-count"><small>Step 2</small>The true count →</a>
+    </nav>
+  </main>
+  <footer class="site-footer">
+    <a href="/">Trainer</a>
+    <a href="/learn">Learn</a>
+    <a href="/learn/how-to-count-cards">How to count cards</a>
+    <a href="/learn/true-count">True count</a>
+    <a href="/learn/basic-strategy">Basic strategy chart</a>
+    <a href="/learn/deviations">Index plays</a>
+    <a href="/privacy">Privacy</a>
+    <span class="note">TrueCountLab is a free practice tool. Play money only: no gambling, no ads.</span>
+  </footer>
+</body>
+</html>

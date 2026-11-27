@@ -32,6 +32,8 @@ jobs:
         run: npm run typecheck --prefix tools
       - name: No "null" printed as page text
         run: node scripts/check-null-text.js
+      - name: Learn guides' tables match the trainer's strategy code
+        run: node scripts/learn-tables.mjs --check
 
   test:
     name: Tests (Node ${{ matrix.node }})

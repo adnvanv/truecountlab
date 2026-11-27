@@ -106,6 +106,7 @@ new ResizeObserver(syncTopbar).observe(topbar);
 syncTopbar();
 
 let unmount = null;
+const HOME_TITLE = document.title;
 function route() {
   const id = location.hash.slice(1).split('?')[0];
   const v = VIEWS.find((x) => x.id === id) || VIEWS[0];
@@ -117,7 +118,8 @@ function route() {
   for (const t of tabbar.children) t.classList.toggle('active', TABS.find((x) => x.id === t.dataset.tab).views.includes(v.id));
   for (const a of /** @type {HTMLCollectionOf<HTMLElement>} */ (nav.children)) a.classList.toggle('active', a.dataset.id === v.id);
   nav.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  document.title = `${v.label} · TrueCountLab`;
+  // Home keeps the page's own title (the one search results show); other views name themselves.
+  document.title = v.id === 'home' ? HOME_TITLE : `${v.label} · TrueCountLab`;
   unmount = v.mount(view, ctx);
   window.scrollTo(0, 0);
 }

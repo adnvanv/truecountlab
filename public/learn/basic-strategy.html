@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Blackjack Basic Strategy Chart (6 Decks, Dealer Stands on Soft 17) · TrueCountLab</title>
+  <meta name="description" content="Free blackjack basic strategy chart for 6 decks, dealer stands on soft 17, double after split: hard totals, soft totals and pairs, how to read it, and a drill to memorize it.">
+  <link rel="canonical" href="https://truecountlab.com/learn/basic-strategy">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="TrueCountLab">
+  <meta property="og:title" content="Blackjack basic strategy chart (6 decks, S17, DAS)">
+  <meta property="og:description" content="Hard totals, soft totals and pairs, with a drill to memorize every cell.">
+  <meta property="og:url" content="https://truecountlab.com/learn/basic-strategy">
+  <meta property="og:image" content="https://truecountlab.com/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0b3326">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="learn.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "TrueCountLab", "item": "https://truecountlab.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Learn", "item": "https://truecountlab.com/learn" },
+          { "@type": "ListItem", "position": 3, "name": "Basic strategy chart", "item": "https://truecountlab.com/learn/basic-strategy" }
+        ]
+      },
+      {
+        "@type": "Article",
+        "headline": "Blackjack basic strategy chart (6 decks, dealer stands on soft 17)",
+        "description": "Hard totals, soft totals and pairs for a six-deck game where the dealer stands on soft 17 and you can double after splitting.",
+        "url": "https://truecountlab.com/learn/basic-strategy",
+        "image": "https://truecountlab.com/og.jpg",
+        "datePublished": "2026-11-27",
+        "dateModified": "2026-11-27",
+        "inLanguage": "en",
+        "author": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" },
+        "publisher": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo" aria-hidden="true">♠</span><span>TrueCountLab</span></a>
+    <nav class="learn-nav" aria-label="Site">
+      <a href="/learn">Learn</a>
+      <a class="btn primary sm" href="/#basic">Start practicing</a>
+    </nav>
+  </header>
+  <main class="learn">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/learn">Learn</a> › Basic strategy chart</nav>
+    <article>
+      <h1>Blackjack basic strategy chart</h1>
+      <p class="lede">Basic strategy is the mathematically best way to play every hand when you know nothing but your cards and the dealer's upcard. It cuts the house edge to about half a percent, and it's the foundation every card counter builds on.</p>
+      <p>This chart is for <strong>6 decks, dealer stands on soft 17, double after split allowed, blackjack pays 3:2, no surrender</strong>, the rules the TrueCountLab trainer uses and a very common shoe game. Find your hand in the left column and the dealer's upcard along the top.</p>
+
+      <div class="legend" aria-label="Legend">
+        <span><i style="background:#e8e3d4"></i>H · Hit</span>
+        <span><i style="background:#e9c46a"></i>S · Stand</span>
+        <span><i style="background:#6ad99a"></i>D · Double (hit if you can't)</span>
+        <span><i style="background:repeating-linear-gradient(135deg,#6ad99a 0 4px,#e9c46a 4px 8px)"></i>Ds · Double (stand if you can't)</span>
+        <span><i style="background:#84c8ff"></i>P · Split</span>
+      </div>
+
+      <h2>Hard totals</h2>
+      <p>No ace, or an ace that has to count as 1.</p>
+      <!-- gen:hard -->
+      <div class="table-wrap">
+        <table class="chart">
+          <caption class="sr-only">Hard totals: your total down the side, dealer upcard across the top</caption>
+          <thead><tr><th scope="col">You</th><th scope="col">2</th><th scope="col">3</th><th scope="col">4</th><th scope="col">5</th><th scope="col">6</th><th scope="col">7</th><th scope="col">8</th><th scope="col">9</th><th scope="col">10</th><th scope="col">A</th></tr></thead>
+          <tbody>
+          <tr><th scope="row">8 or less</th><td class="H" title="8 or less vs 2: Hit">H</td><td class="H" title="8 or less vs 3: Hit">H</td><td class="H" title="8 or less vs 4: Hit">H</td><td class="H" title="8 or less vs 5: Hit">H</td><td class="H" title="8 or less vs 6: Hit">H</td><td class="H" title="8 or less vs 7: Hit">H</td><td class="H" title="8 or less vs 8: Hit">H</td><td class="H" title="8 or less vs 9: Hit">H</td><td class="H" title="8 or less vs 10: Hit">H</td><td class="H" title="8 or less vs A: Hit">H</td></tr>
+          <tr><th scope="row">9</th><td class="H" title="9 vs 2: Hit">H</td><td class="D" title="9 vs 3: Double, or hit if you can’t">D</td><td class="D" title="9 vs 4: Double, or hit if you can’t">D</td><td class="D" title="9 vs 5: Double, or hit if you can’t">D</td><td class="D" title="9 vs 6: Double, or hit if you can’t">D</td><td class="H" title="9 vs 7: Hit">H</td><td class="H" title="9 vs 8: Hit">H</td><td class="H" title="9 vs 9: Hit">H</td><td class="H" title="9 vs 10: Hit">H</td><td class="H" title="9 vs A: Hit">H</td></tr>
+          <tr><th scope="row">10</th><td class="D" title="10 vs 2: Double, or hit if you can’t">D</td><td class="D" title="10 vs 3: Double, or hit if you can’t">D</td><td class="D" title="10 vs 4: Double, or hit if you can’t">D</td><td class="D" title="10 vs 5: Double, or hit if you can’t">D</td><td class="D" title="10 vs 6: Double, or hit if you can’t">D</td><td class="D" title="10 vs 7: Double, or hit if you can’t">D</td><td class="D" title="10 vs 8: Double, or hit if you can’t">D</td><td class="D" title="10 vs 9: Double, or hit if you can’t">D</td><td class="H" title="10 vs 10: Hit">H</td><td class="H" title="10 vs A: Hit">H</td></tr>
+          <tr><th scope="row">11</th><td class="D" title="11 vs 2: Double, or hit if you can’t">D</td><td class="D" title="11 vs 3: Double, or hit if you can’t">D</td><td class="D" title="11 vs 4: Double, or hit if you can’t">D</td><td class="D" title="11 vs 5: Double, or hit if you can’t">D</td><td class="D" title="11 vs 6: Double, or hit if you can’t">D</td><td class="D" title="11 vs 7: Double, or hit if you can’t">D</td><td class="D" title="11 vs 8: Double, or hit if you can’t">D</td><td class="D" title="11 vs 9: Double, or hit if you can’t">D</td><td class="D" title="11 vs 10: Double, or hit if you can’t">D</td><td class="H" title="11 vs A: Hit">H</td></tr>
+          <tr><th scope="row">12</th><td class="H" title="12 vs 2: Hit">H</td><td class="H" title="12 vs 3: Hit">H</td><td class="S" title="12 vs 4: Stand">S</td><td class="S" title="12 vs 5: Stand">S</td><td class="S" title="12 vs 6: Stand">S</td><td class="H" title="12 vs 7: Hit">H</td><td class="H" title="12 vs 8: Hit">H</td><td class="H" title="12 vs 9: Hit">H</td><td class="H" title="12 vs 10: Hit">H</td><td class="H" title="12 vs A: Hit">H</td></tr>
+          <tr><th scope="row">13</th><td class="S" title="13 vs 2: Stand">S</td><td class="S" title="13 vs 3: Stand">S</td><td class="S" title="13 vs 4: Stand">S</td><td class="S" title="13 vs 5: Stand">S</td><td class="S" title="13 vs 6: Stand">S</td><td class="H" title="13 vs 7: Hit">H</td><td class="H" title="13 vs 8: Hit">H</td><td class="H" title="13 vs 9: Hit">H</td><td class="H" title="13 vs 10: Hit">H</td><td class="H" title="13 vs A: Hit">H</td></tr>
+          <tr><th scope="row">14</th><td class="S" title="14 vs 2: Stand">S</td><td class="S" title="14 vs 3: Stand">S</td><td class="S" title="14 vs 4: Stand">S</td><td class="S" title="14 vs 5: Stand">S</td><td class="S" title="14 vs 6: Stand">S</td><td class="H" title="14 vs 7: Hit">H</td><td class="H" title="14 vs 8: Hit">H</td><td class="H" title="14 vs 9: Hit">H</td><td class="H" title="14 vs 10: Hit">H</td><td class="H" title="14 vs A: Hit">H</td></tr>
+          <tr><th scope="row">15</th><td class="S" title="15 vs 2: Stand">S</td><td class="S" title="15 vs 3: Stand">S</td><td class="S" title="15 vs 4: Stand">S</td><td class="S" title="15 vs 5: Stand">S</td><td class="S" title="15 vs 6: Stand">S</td><td class="H" title="15 vs 7: Hit">H</td><td class="H" title="15 vs 8: Hit">H</td><td class="H" title="15 vs 9: Hit">H</td><td class="H" title="15 vs 10: Hit">H</td><td class="H" title="15 vs A: Hit">H</td></tr>
+          <tr><th scope="row">16</th><td class="S" title="16 vs 2: Stand">S</td><td class="S" title="16 vs 3: Stand">S</td><td class="S" title="16 vs 4: Stand">S</td><td class="S" title="16 vs 5: Stand">S</td><td class="S" title="16 vs 6: Stand">S</td><td class="H" title="16 vs 7: Hit">H</td><td class="H" title="16 vs 8: Hit">H</td><td class="H" title="16 vs 9: Hit">H</td><td class="H" title="16 vs 10: Hit">H</td><td class="H" title="16 vs A: Hit">H</td></tr>
+          <tr><th scope="row">17+</th><td class="S" title="17+ vs 2: Stand">S</td><td class="S" title="17+ vs 3: Stand">S</td><td class="S" title="17+ vs 4: Stand">S</td><td class="S" title="17+ vs 5: Stand">S</td><td class="S" title="17+ vs 6: Stand">S</td><td class="S" title="17+ vs 7: Stand">S</td><td class="S" title="17+ vs 8: Stand">S</td><td class="S" title="17+ vs 9: Stand">S</td><td class="S" title="17+ vs 10: Stand">S</td><td class="S" title="17+ vs A: Stand">S</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /gen:hard -->
+
+      <h2>Soft totals</h2>
+      <p>An ace that counts as 11 without busting. A soft 18 is ace-7.</p>
+      <!-- gen:soft -->
+      <div class="table-wrap">
+        <table class="chart">
+          <caption class="sr-only">Soft totals: your hand down the side, dealer upcard across the top</caption>
+          <thead><tr><th scope="col">You</th><th scope="col">2</th><th scope="col">3</th><th scope="col">4</th><th scope="col">5</th><th scope="col">6</th><th scope="col">7</th><th scope="col">8</th><th scope="col">9</th><th scope="col">10</th><th scope="col">A</th></tr></thead>
+          <tbody>
+          <tr><th scope="row">A,2 (soft 13)</th><td class="H" title="A,2 (soft 13) vs 2: Hit">H</td><td class="H" title="A,2 (soft 13) vs 3: Hit">H</td><td class="H" title="A,2 (soft 13) vs 4: Hit">H</td><td class="D" title="A,2 (soft 13) vs 5: Double, or hit if you can’t">D</td><td class="D" title="A,2 (soft 13) vs 6: Double, or hit if you can’t">D</td><td class="H" title="A,2 (soft 13) vs 7: Hit">H</td><td class="H" title="A,2 (soft 13) vs 8: Hit">H</td><td class="H" title="A,2 (soft 13) vs 9: Hit">H</td><td class="H" title="A,2 (soft 13) vs 10: Hit">H</td><td class="H" title="A,2 (soft 13) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,3 (soft 14)</th><td class="H" title="A,3 (soft 14) vs 2: Hit">H</td><td class="H" title="A,3 (soft 14) vs 3: Hit">H</td><td class="H" title="A,3 (soft 14) vs 4: Hit">H</td><td class="D" title="A,3 (soft 14) vs 5: Double, or hit if you can’t">D</td><td class="D" title="A,3 (soft 14) vs 6: Double, or hit if you can’t">D</td><td class="H" title="A,3 (soft 14) vs 7: Hit">H</td><td class="H" title="A,3 (soft 14) vs 8: Hit">H</td><td class="H" title="A,3 (soft 14) vs 9: Hit">H</td><td class="H" title="A,3 (soft 14) vs 10: Hit">H</td><td class="H" title="A,3 (soft 14) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,4 (soft 15)</th><td class="H" title="A,4 (soft 15) vs 2: Hit">H</td><td class="H" title="A,4 (soft 15) vs 3: Hit">H</td><td class="D" title="A,4 (soft 15) vs 4: Double, or hit if you can’t">D</td><td class="D" title="A,4 (soft 15) vs 5: Double, or hit if you can’t">D</td><td class="D" title="A,4 (soft 15) vs 6: Double, or hit if you can’t">D</td><td class="H" title="A,4 (soft 15) vs 7: Hit">H</td><td class="H" title="A,4 (soft 15) vs 8: Hit">H</td><td class="H" title="A,4 (soft 15) vs 9: Hit">H</td><td class="H" title="A,4 (soft 15) vs 10: Hit">H</td><td class="H" title="A,4 (soft 15) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,5 (soft 16)</th><td class="H" title="A,5 (soft 16) vs 2: Hit">H</td><td class="H" title="A,5 (soft 16) vs 3: Hit">H</td><td class="D" title="A,5 (soft 16) vs 4: Double, or hit if you can’t">D</td><td class="D" title="A,5 (soft 16) vs 5: Double, or hit if you can’t">D</td><td class="D" title="A,5 (soft 16) vs 6: Double, or hit if you can’t">D</td><td class="H" title="A,5 (soft 16) vs 7: Hit">H</td><td class="H" title="A,5 (soft 16) vs 8: Hit">H</td><td class="H" title="A,5 (soft 16) vs 9: Hit">H</td><td class="H" title="A,5 (soft 16) vs 10: Hit">H</td><td class="H" title="A,5 (soft 16) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,6 (soft 17)</th><td class="H" title="A,6 (soft 17) vs 2: Hit">H</td><td class="D" title="A,6 (soft 17) vs 3: Double, or hit if you can’t">D</td><td class="D" title="A,6 (soft 17) vs 4: Double, or hit if you can’t">D</td><td class="D" title="A,6 (soft 17) vs 5: Double, or hit if you can’t">D</td><td class="D" title="A,6 (soft 17) vs 6: Double, or hit if you can’t">D</td><td class="H" title="A,6 (soft 17) vs 7: Hit">H</td><td class="H" title="A,6 (soft 17) vs 8: Hit">H</td><td class="H" title="A,6 (soft 17) vs 9: Hit">H</td><td class="H" title="A,6 (soft 17) vs 10: Hit">H</td><td class="H" title="A,6 (soft 17) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,7 (soft 18)</th><td class="S" title="A,7 (soft 18) vs 2: Stand">S</td><td class="Ds" title="A,7 (soft 18) vs 3: Double, or stand if you can’t">Ds</td><td class="Ds" title="A,7 (soft 18) vs 4: Double, or stand if you can’t">Ds</td><td class="Ds" title="A,7 (soft 18) vs 5: Double, or stand if you can’t">Ds</td><td class="Ds" title="A,7 (soft 18) vs 6: Double, or stand if you can’t">Ds</td><td class="S" title="A,7 (soft 18) vs 7: Stand">S</td><td class="S" title="A,7 (soft 18) vs 8: Stand">S</td><td class="H" title="A,7 (soft 18) vs 9: Hit">H</td><td class="H" title="A,7 (soft 18) vs 10: Hit">H</td><td class="H" title="A,7 (soft 18) vs A: Hit">H</td></tr>
+          <tr><th scope="row">A,8 (soft 19)</th><td class="S" title="A,8 (soft 19) vs 2: Stand">S</td><td class="S" title="A,8 (soft 19) vs 3: Stand">S</td><td class="S" title="A,8 (soft 19) vs 4: Stand">S</td><td class="S" title="A,8 (soft 19) vs 5: Stand">S</td><td class="S" title="A,8 (soft 19) vs 6: Stand">S</td><td class="S" title="A,8 (soft 19) vs 7: Stand">S</td><td class="S" title="A,8 (soft 19) vs 8: Stand">S</td><td class="S" title="A,8 (soft 19) vs 9: Stand">S</td><td class="S" title="A,8 (soft 19) vs 10: Stand">S</td><td class="S" title="A,8 (soft 19) vs A: Stand">S</td></tr>
+          <tr><th scope="row">A,9 (soft 20)</th><td class="S" title="A,9 (soft 20) vs 2: Stand">S</td><td class="S" title="A,9 (soft 20) vs 3: Stand">S</td><td class="S" title="A,9 (soft 20) vs 4: Stand">S</td><td class="S" title="A,9 (soft 20) vs 5: Stand">S</td><td class="S" title="A,9 (soft 20) vs 6: Stand">S</td><td class="S" title="A,9 (soft 20) vs 7: Stand">S</td><td class="S" title="A,9 (soft 20) vs 8: Stand">S</td><td class="S" title="A,9 (soft 20) vs 9: Stand">S</td><td class="S" title="A,9 (soft 20) vs 10: Stand">S</td><td class="S" title="A,9 (soft 20) vs A: Stand">S</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /gen:soft -->
+
+      <h2>Pairs</h2>
+      <p>When you're dealt two cards of the same rank and can split. Any two ten-value cards count as a pair of tens.</p>
+      <!-- gen:pairs -->
+      <div class="table-wrap">
+        <table class="chart">
+          <caption class="sr-only">Pairs: your pair down the side, dealer upcard across the top</caption>
+          <thead><tr><th scope="col">You</th><th scope="col">2</th><th scope="col">3</th><th scope="col">4</th><th scope="col">5</th><th scope="col">6</th><th scope="col">7</th><th scope="col">8</th><th scope="col">9</th><th scope="col">10</th><th scope="col">A</th></tr></thead>
+          <tbody>
+          <tr><th scope="row">A,A</th><td class="P" title="A,A vs 2: Split">P</td><td class="P" title="A,A vs 3: Split">P</td><td class="P" title="A,A vs 4: Split">P</td><td class="P" title="A,A vs 5: Split">P</td><td class="P" title="A,A vs 6: Split">P</td><td class="P" title="A,A vs 7: Split">P</td><td class="P" title="A,A vs 8: Split">P</td><td class="P" title="A,A vs 9: Split">P</td><td class="P" title="A,A vs 10: Split">P</td><td class="P" title="A,A vs A: Split">P</td></tr>
+          <tr><th scope="row">10,10</th><td class="S" title="10,10 vs 2: Stand">S</td><td class="S" title="10,10 vs 3: Stand">S</td><td class="S" title="10,10 vs 4: Stand">S</td><td class="S" title="10,10 vs 5: Stand">S</td><td class="S" title="10,10 vs 6: Stand">S</td><td class="S" title="10,10 vs 7: Stand">S</td><td class="S" title="10,10 vs 8: Stand">S</td><td class="S" title="10,10 vs 9: Stand">S</td><td class="S" title="10,10 vs 10: Stand">S</td><td class="S" title="10,10 vs A: Stand">S</td></tr>
+          <tr><th scope="row">9,9</th><td class="P" title="9,9 vs 2: Split">P</td><td class="P" title="9,9 vs 3: Split">P</td><td class="P" title="9,9 vs 4: Split">P</td><td class="P" title="9,9 vs 5: Split">P</td><td class="P" title="9,9 vs 6: Split">P</td><td class="S" title="9,9 vs 7: Stand">S</td><td class="P" title="9,9 vs 8: Split">P</td><td class="P" title="9,9 vs 9: Split">P</td><td class="S" title="9,9 vs 10: Stand">S</td><td class="S" title="9,9 vs A: Stand">S</td></tr>
+          <tr><th scope="row">8,8</th><td class="P" title="8,8 vs 2: Split">P</td><td class="P" title="8,8 vs 3: Split">P</td><td class="P" title="8,8 vs 4: Split">P</td><td class="P" title="8,8 vs 5: Split">P</td><td class="P" title="8,8 vs 6: Split">P</td><td class="P" title="8,8 vs 7: Split">P</td><td class="P" title="8,8 vs 8: Split">P</td><td class="P" title="8,8 vs 9: Split">P</td><td class="P" title="8,8 vs 10: Split">P</td><td class="P" title="8,8 vs A: Split">P</td></tr>
+          <tr><th scope="row">7,7</th><td class="P" title="7,7 vs 2: Split">P</td><td class="P" title="7,7 vs 3: Split">P</td><td class="P" title="7,7 vs 4: Split">P</td><td class="P" title="7,7 vs 5: Split">P</td><td class="P" title="7,7 vs 6: Split">P</td><td class="P" title="7,7 vs 7: Split">P</td><td class="H" title="7,7 vs 8: Hit">H</td><td class="H" title="7,7 vs 9: Hit">H</td><td class="H" title="7,7 vs 10: Hit">H</td><td class="H" title="7,7 vs A: Hit">H</td></tr>
+          <tr><th scope="row">6,6</th><td class="P" title="6,6 vs 2: Split">P</td><td class="P" title="6,6 vs 3: Split">P</td><td class="P" title="6,6 vs 4: Split">P</td><td class="P" title="6,6 vs 5: Split">P</td><td class="P" title="6,6 vs 6: Split">P</td><td class="H" title="6,6 vs 7: Hit">H</td><td class="H" title="6,6 vs 8: Hit">H</td><td class="H" title="6,6 vs 9: Hit">H</td><td class="H" title="6,6 vs 10: Hit">H</td><td class="H" title="6,6 vs A: Hit">H</td></tr>
+          <tr><th scope="row">5,5</th><td class="D" title="5,5 vs 2: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 3: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 4: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 5: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 6: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 7: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 8: Double, or hit if you can’t">D</td><td class="D" title="5,5 vs 9: Double, or hit if you can’t">D</td><td class="H" title="5,5 vs 10: Hit">H</td><td class="H" title="5,5 vs A: Hit">H</td></tr>
+          <tr><th scope="row">4,4</th><td class="H" title="4,4 vs 2: Hit">H</td><td class="H" title="4,4 vs 3: Hit">H</td><td class="H" title="4,4 vs 4: Hit">H</td><td class="P" title="4,4 vs 5: Split">P</td><td class="P" title="4,4 vs 6: Split">P</td><td class="H" title="4,4 vs 7: Hit">H</td><td class="H" title="4,4 vs 8: Hit">H</td><td class="H" title="4,4 vs 9: Hit">H</td><td class="H" title="4,4 vs 10: Hit">H</td><td class="H" title="4,4 vs A: Hit">H</td></tr>
+          <tr><th scope="row">3,3</th><td class="P" title="3,3 vs 2: Split">P</td><td class="P" title="3,3 vs 3: Split">P</td><td class="P" title="3,3 vs 4: Split">P</td><td class="P" title="3,3 vs 5: Split">P</td><td class="P" title="3,3 vs 6: Split">P</td><td class="P" title="3,3 vs 7: Split">P</td><td class="H" title="3,3 vs 8: Hit">H</td><td class="H" title="3,3 vs 9: Hit">H</td><td class="H" title="3,3 vs 10: Hit">H</td><td class="H" title="3,3 vs A: Hit">H</td></tr>
+          <tr><th scope="row">2,2</th><td class="P" title="2,2 vs 2: Split">P</td><td class="P" title="2,2 vs 3: Split">P</td><td class="P" title="2,2 vs 4: Split">P</td><td class="P" title="2,2 vs 5: Split">P</td><td class="P" title="2,2 vs 6: Split">P</td><td class="P" title="2,2 vs 7: Split">P</td><td class="H" title="2,2 vs 8: Hit">H</td><td class="H" title="2,2 vs 9: Hit">H</td><td class="H" title="2,2 vs 10: Hit">H</td><td class="H" title="2,2 vs A: Hit">H</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /gen:pairs -->
+
+      <h2>How to learn it</h2>
+      <p>The chart looks like a lot, but it follows a few patterns. Learn them, then memorize the exceptions:</p>
+      <ul>
+        <li><strong>Dealer 2 to 6 is weak, 7 to ace is strong.</strong> Against a weak upcard you stand on stiff hands (13 to 16) and let the dealer bust. Against a strong one you hit them.</li>
+        <li><strong>12 is the exception among stiffs:</strong> stand only against 4, 5 and 6.</li>
+        <li><strong>Double 11 against everything but an ace, 10 against everything but 10 and ace, and 9 against 3 to 6.</strong></li>
+        <li><strong>Always split aces and 8s. Never split 5s or tens.</strong> Treat a pair of 5s as a hard 10.</li>
+        <li><strong>Soft hands double against the dealer's weakest cards,</strong> and the window widens as the hand gets better: soft 13 and 14 against 5 and 6, soft 15 and 16 against 4 to 6, and soft 17 and 18 against 3 to 6. Soft 18 stands against 2, 7 and 8 and hits against 9, 10 and ace. Soft 19 and up always stand.</li>
+        <li><strong>Never take insurance</strong> unless you're counting: with Hi-Lo it's right at a true count of +3 or more.</li>
+      </ul>
+      <div class="callout">
+        <p><strong>Practice:</strong> the <a href="/#basic">Basic Strategy drill</a> deals random hands and grades every decision instantly. A heatmap shows exactly which cells you miss, so you can focus on them. The <a href="/#chart">full chart</a> is also in the trainer.</p>
+      </div>
+      <p>Other rules change a few cells. If the dealer hits soft 17, or surrender is offered, a handful of plays differ. The patterns above still hold.</p>
+      <div class="cta">
+        <a class="btn primary" href="/#basic">Drill basic strategy</a>
+        <a class="btn" href="/learn/deviations">Next: index plays</a>
+      </div>
+    </article>
+
+    <nav class="next-prev" aria-label="Guide">
+      <a href="/learn/true-count"><small>Step 2</small>← The true count</a>
+      <a href="/learn/deviations"><small>Step 4</small>Index plays →</a>
+    </nav>
+  </main>
+  <footer class="site-footer">
+    <a href="/">Trainer</a>
+    <a href="/learn">Learn</a>
+    <a href="/learn/how-to-count-cards">How to count cards</a>
+    <a href="/learn/true-count">True count</a>
+    <a href="/learn/basic-strategy">Basic strategy chart</a>
+    <a href="/learn/deviations">Index plays</a>
+    <a href="/privacy">Privacy</a>
+    <span class="note">TrueCountLab is a free practice tool. Play money only: no gambling, no ads.</span>
+  </footer>
+</body>
+</html>

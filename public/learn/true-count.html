@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>True Count in Blackjack: How to Calculate It (with Examples) · TrueCountLab</title>
+  <meta name="description" content="How to convert the running count to the true count in blackjack: estimate decks remaining from the discard tray, divide, and round down. Worked examples and a free drill.">
+  <link rel="canonical" href="https://truecountlab.com/learn/true-count">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="TrueCountLab">
+  <meta property="og:title" content="The true count: how to calculate it">
+  <meta property="og:description" content="Estimate decks remaining, divide the running count, round down. Worked examples and a free drill.">
+  <meta property="og:url" content="https://truecountlab.com/learn/true-count">
+  <meta property="og:image" content="https://truecountlab.com/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0b3326">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="learn.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "TrueCountLab", "item": "https://truecountlab.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Learn", "item": "https://truecountlab.com/learn" },
+          { "@type": "ListItem", "position": 3, "name": "True count", "item": "https://truecountlab.com/learn/true-count" }
+        ]
+      },
+      {
+        "@type": "Article",
+        "headline": "The true count in blackjack: how to calculate it",
+        "description": "Estimate decks remaining from the discard tray, divide the running count by it, and round down.",
+        "url": "https://truecountlab.com/learn/true-count",
+        "image": "https://truecountlab.com/og.jpg",
+        "datePublished": "2026-11-27",
+        "dateModified": "2026-11-27",
+        "inLanguage": "en",
+        "author": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" },
+        "publisher": { "@type": "Organization", "name": "TrueCountLab", "url": "https://truecountlab.com/" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo" aria-hidden="true">♠</span><span>TrueCountLab</span></a>
+    <nav class="learn-nav" aria-label="Site">
+      <a href="/learn">Learn</a>
+      <a class="btn primary sm" href="/#truecount">Start practicing</a>
+    </nav>
+  </header>
+  <main class="learn">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/learn">Learn</a> › True count</nav>
+    <article>
+      <h1>The true count: how to calculate it</h1>
+      <p class="lede">The running count tells you how many extra big cards are left in the shoe. The true count tells you how concentrated they are, and that's what decides your bet and your index plays.</p>
+
+      <h2>Why you need it</h2>
+      <p>Imagine two shoes, both at a running count of +6. In the first, one deck is left to deal: six extra tens and aces are packed into about 52 cards, a big advantage. In the second, five decks are left, so the same six cards are spread across about 260. The game is barely changed. Dividing by the decks remaining puts both situations on the same scale.</p>
+
+      <div class="callout">
+        <p><strong>True count = running count ÷ decks remaining</strong>, rounded down.</p>
+      </div>
+
+      <h2>Step 1: estimate the decks remaining</h2>
+      <p>You don't count cards dealt to work this out. You look at the <strong>discard tray</strong>. Learn what half a deck, one deck, two decks and so on look like as a stack, then:</p>
+      <ol>
+        <li>Estimate how many decks are in the tray, to the nearest half deck.</li>
+        <li>Subtract that from the number of decks in the game. In a six-deck shoe with 2½ decks in the tray, 3½ decks remain.</li>
+      </ol>
+      <p>Half-deck accuracy is plenty. Counting toward the end of the shoe, when the divisor is small, is where precision matters most, so take extra care there.</p>
+
+      <h2>Step 2: divide, then round down</h2>
+      <p>Divide the running count by the decks remaining. Then round <em>down</em> to the whole number below (toward minus infinity). So +2.8 becomes +2, and −2.5 becomes −3. Rounding down is the conservative choice: it keeps you from betting big on a count that's only nearly good enough.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Running count</th><th>Decks remaining</th><th>Exact</th><th>True count</th></tr></thead>
+          <tbody>
+            <tr><td>+6</td><td>3</td><td>+2.0</td><td><strong>+2</strong></td></tr>
+            <tr><td>+7</td><td>2½</td><td>+2.8</td><td><strong>+2</strong></td></tr>
+            <tr><td>+9</td><td>2</td><td>+4.5</td><td><strong>+4</strong></td></tr>
+            <tr><td>+4</td><td>4½</td><td>+0.9</td><td><strong>0</strong></td></tr>
+            <tr><td>+3</td><td>½</td><td>+6.0</td><td><strong>+6</strong></td></tr>
+            <tr><td>−5</td><td>2</td><td>−2.5</td><td><strong>−3</strong></td></tr>
+            <tr><td>−2</td><td>5</td><td>−0.4</td><td><strong>−1</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Some players truncate toward zero instead, so −2.5 becomes −2. Either works if you're consistent; the TrueCountLab drills always round down, as above.</p>
+
+      <h3>Shortcuts</h3>
+      <ul>
+        <li><strong>Halves are just doubling:</strong> dividing by 2½ is the same as doubling the count and dividing by 5. With ½ deck left, double the running count.</li>
+        <li><strong>Learn the common divisions cold:</strong> the running counts you'll see most often are −10 to +15, and the divisors are only 1 to 6 in halves. A few minutes a day of the drill makes these instant.</li>
+        <li><strong>Only convert when you need it:</strong> before placing a bet, and when a hand comes up that has an index play. You don't need the true count after every card.</li>
+      </ul>
+
+      <h2>What the true count means</h2>
+      <p>Each +1 of true count moves the game roughly half a percent toward the player. A typical six-deck game starts around −0.5% for a basic strategy player, so:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>True count</th><th>Rough player edge</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>0 or lower</td><td>−0.5% or worse</td><td>Minimum bet</td></tr>
+            <tr><td>+1</td><td>about 0%</td><td>Minimum bet</td></tr>
+            <tr><td>+2</td><td>about +0.5%</td><td>Start raising</td></tr>
+            <tr><td>+3</td><td>about +1%</td><td>Raise; take insurance</td></tr>
+            <tr><td>+4 and up</td><td>+1.5% and up</td><td>Top bet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The exact numbers depend on the rules and penetration, but the shape is always the same. See <a href="/learn/how-to-count-cards#betting">betting with the count</a> for a bet ramp, and <a href="/learn/deviations">index plays</a> for the plays that change with the true count.</p>
+
+      <div class="callout">
+        <p><strong>Practice:</strong> the <a href="/#truecount">True Count drill</a> shows a running count and a discard tray drawn to scale, with gold lines for whole decks and faint lines for half decks. You estimate and convert, and it tells you whether a mistake came from the estimate, the division or the rounding.</p>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="/#truecount">Try the True Count drill</a>
+        <a class="btn" href="/learn/basic-strategy">Next: basic strategy</a>
+      </div>
+    </article>
+
+    <nav class="next-prev" aria-label="Guide">
+      <a href="/learn/how-to-count-cards"><small>Step 1</small>← How to count cards</a>
+      <a href="/learn/basic-strategy"><small>Step 3</small>Basic strategy chart →</a>
+    </nav>
+  </main>
+  <footer class="site-footer">
+    <a href="/">Trainer</a>
+    <a href="/learn">Learn</a>
+    <a href="/learn/how-to-count-cards">How to count cards</a>
+    <a href="/learn/true-count">True count</a>
+    <a href="/learn/basic-strategy">Basic strategy chart</a>
+    <a href="/learn/deviations">Index plays</a>
+    <a href="/privacy">Privacy</a>
+    <span class="note">TrueCountLab is a free practice tool. Play money only: no gambling, no ads.</span>
+  </footer>
+</body>
+</html>

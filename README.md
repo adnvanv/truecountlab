@@ -92,6 +92,11 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 - **Rooms:** quick play, private rooms by code or invite link, host controls, and room chat (masked, rate-limited, never saved).
 - **Leaderboards** for signed-in players: battle Elo, wins (outright first only), battle accuracy, and table play and count-check accuracy.
 
+## Learn guides
+Static, crawlable pages at [`/learn`](https://truecountlab.com/learn): how to count cards (Hi-Lo), the true count, a basic strategy chart and index plays. Each one links into the drill for that skill.
+- The trainer itself lives behind `#` routes, which search engines don't index, so these pages carry the site's searchable content. Each has its own title, description, canonical URL, Open Graph tags and schema.org data (Article, BreadcrumbList, Course, FAQPage). `robots.txt` and `sitemap.xml` are in `public/`.
+- The strategy and index tables are generated from `public/js/strategy.js` by `node scripts/learn-tables.mjs`, and CI runs it with `--check`, so the guides can't disagree with what the drills grade.
+
 ## Accounts and privacy
 - **Sign-in:** email + password (scrypt), or Google / Discord. A provider login is never auto-merged into a password account with the same email; you connect it from the Account page.
 - **Sessions:** random tokens in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https). Only their SHA-256 is stored.
@@ -161,6 +166,7 @@ npm ci --prefix tools && npm run typecheck --prefix tools      # tsc --checkJs (
 node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 49 game-rules tests, stacked shoes
 node scripts/test-live.mjs                                     # 58 end-to-end tests against a throwaway server
 node scripts/check-null-text.js                                # no "null" printed as page text
+node scripts/learn-tables.mjs --check                          # guide tables match strategy.js
 ```
 - **Type checks:** four projects. `tsconfig.server.json` and `tsconfig.core.json` (the server and `cards.js` / `strategy.js`) are strict. `tsconfig.web.json` and `tsconfig.scripts.json` check the views and test scripts without strict mode. Shared server types live in `server/types.d.ts`.
 - **Assets:** scripts and stylesheets are served from `/v/<build>/…`, where the build id is a hash of `public/`. Every deploy changes every asset URL, so no browser or CDN keeps old code.
