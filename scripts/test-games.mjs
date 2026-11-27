@@ -103,6 +103,29 @@ const stand = (v) => (v.you.moves ? { a: 'act', move: 'S' } : null);
 const moves = (list) => { const q = [...list]; return (v) => (v.you.moves && q.length ? { a: 'act', move: q.shift() } : null); };
 
 try {
+  console.log('The shoe');
+  {
+    // Deal out whole shoes: every card accounted for, the count balances, the cut is at 75%.
+    let wrong = 0; let unbalanced = 0;
+    for (let n = 0; n < 2000; n++) {
+      const shoe = new C.Shoe();
+      const seen = new Map(); let rc = 0;
+      while (shoe.remaining) { const c = shoe.draw(); seen.set(c.rank + c.suit, (seen.get(c.rank + c.suit) || 0) + 1); rc += C.hiLo(c); }
+      if (seen.size !== 52 || [...seen.values()].some((v) => v !== 6)) wrong++;
+      if (rc !== 0) unbalanced++;
+    }
+    ok(wrong === 0, 'every shoe is 6 full decks: 312 cards, each of the 52 exactly 6 times (2,000 shoes)', `${wrong} wrong`);
+    ok(unbalanced === 0, 'dealing a whole shoe brings the Hi-Lo count back to exactly 0');
+    const s = new C.Shoe();
+    ok(s.cards.length === 312 && s.cutIndex === 234, 'the cut card sits at card 234 of 312 (75%)');
+    // Fair shuffle: where one card lands should be even across all 52 places (chi-square, 51 d.f.;
+    // 90 is past the 99.9th percentile, so a fair shuffle essentially never fails this).
+    const T = 104000; const pos = new Array(52).fill(0);
+    for (let i = 0; i < T; i++) pos[C.shuffleInPlace(C.makeDecks(1)).findIndex((c) => c.rank === 'A' && c.suit === '♠')]++;
+    const chi = pos.reduce((a, o) => a + ((o - T / 52) ** 2) / (T / 52), 0);
+    ok(chi < 90, `the shuffle is fair: the ace of spades lands evenly in all 52 places (chi-square ${chi.toFixed(1)})`);
+  }
+
   console.log('Shared table payouts');
   {
     const { seats, t, dealer } = await playHand({ ranks: ['A', '10', 'K', '7'], plan: stand });
