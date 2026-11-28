@@ -154,7 +154,8 @@ function showTip(id) {
     h('button', { class: 'btn sm', onclick: () => { seen[id] = true; ctx.save(); tip.remove(); } }, 'Got it'));
   // The tables are a fixed grid: their tip goes at the top of the side column.
   const host = view.querySelector('.table-view .side') || view.querySelector('section') || view;
-  host.prepend(tip);
+  const title = host.querySelector(':scope > .view-head');
+  if (title) title.after(tip); else host.prepend(tip);
 }
 addEventListener('hashchange', route);
 
