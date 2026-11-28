@@ -250,9 +250,6 @@ input[type=range] { accent-color: var(--gold); width: 160px; }
 .clock { font-size: 1.6rem; font-weight: 700; }
 .burn { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0; }
 
-.tc-problem { display: flex; gap: 2rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: 1.2rem; border-radius: 22px; border: 1px solid rgba(227, 188, 95, 0.22); background: rgba(0, 0, 0, 0.15); margin-bottom: 1rem; }
-.tc-tray { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
-.tc-main { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
 .big { font-size: 3.4rem; font-weight: 700; line-height: 1; }
 
 .strat-stage { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; padding: 1.2rem; border-radius: 22px; border: 1px solid rgba(227, 188, 95, 0.22); background: rgba(0, 0, 0, 0.15); margin-bottom: 1rem; }
@@ -321,7 +318,6 @@ table.chart { width: 100%; }
   .btn.act { min-width: 0; padding: 0.95em 0.4em; }
   .btn.act kbd, .btn.deal kbd, .bet-sub .muted { display: none; }
   .tray.tall { height: 180px; }
-  .tc-problem { gap: 1.2rem; }
   .big { font-size: 2.6rem; }
   input[type=range] { width: 120px; }
 }
@@ -351,8 +347,6 @@ h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.07em; colo
 .actions.four .btn.act { min-width: 120px; }
 .btn.right { border-color: var(--good) !important; box-shadow: 0 0 0 2px var(--good) inset; opacity: 1 !important; }
 .btn.wrong { border-color: var(--bad) !important; box-shadow: 0 0 0 2px var(--bad) inset; opacity: 1 !important; }
-.tc-decks { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
-.tc-main.center { align-items: center; }
 .actions.bets .btn.bet { min-width: 120px; font-size: 1.2rem; }
 
 /* table */

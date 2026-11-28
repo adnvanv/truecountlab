@@ -10,7 +10,6 @@ export function readiness(stats) {
   for (let i = cd.length - 1; i >= 0 && fast(cd[i]); i--) streak++;
 
   const basic = stats.basic.runs.slice(-200);
-  const tc = stats.truecount.runs.slice(-100);
   const dev = stats.deviation.runs.slice(-100);
 
   const items = [
@@ -23,12 +22,6 @@ export function readiness(stats) {
       met: basic.length >= 200 && acc(basic) >= 0.98,
       frac: Math.min(1, basic.length / 200) * Math.min(1, acc(basic) / 0.98),
       detail: `${basic.length < 200 ? `${basic.length} of 200 hands` : 'Last 200 hands'} · ${basic.length ? Math.round(acc(basic) * 1000) / 10 : 0}%`,
-    },
-    {
-      id: 'truecount', link: '#truecount', label: '95%+ on true count conversions over 100 drills',
-      met: tc.length >= 100 && acc(tc) >= 0.95,
-      frac: Math.min(1, tc.length / 100) * Math.min(1, acc(tc) / 0.95),
-      detail: `${tc.length < 100 ? `${tc.length} of 100 drills` : 'Last 100 drills'} · ${tc.length ? Math.round(acc(tc) * 1000) / 10 : 0}%`,
     },
     {
       id: 'deviation', link: '#deviation', label: '95%+ on deviations over 100 hands',

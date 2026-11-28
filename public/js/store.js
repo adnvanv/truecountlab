@@ -1,6 +1,8 @@
 // Settings, stats, bankroll and sessions.
-// Guests: saved in this browser. Signed in: also synced to the account (api/progress),
-// with revision numbers so devices merge instead of overwriting each other.
+// Signed in: saved in this browser and synced to the account (api/progress), with
+// revision numbers so devices merge instead of overwriting each other.
+// Guests: settings stay in this browser, but progress lasts for this visit only (this
+// tab's sessionStorage, so it survives a sign-in redirect). Creating an account keeps it.
 import { RULES } from './cards.js';
 import { tally } from './tally.js';
 
@@ -26,7 +28,6 @@ export const DEFAULT_SETTINGS = {
 export function freshStats() {
   return {
     countdown: { runs: [] },
-    truecount: { runs: [] },
     basic: { runs: [], cells: {} },
     deviation: { runs: [] },
     training: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
@@ -47,6 +48,9 @@ function fill(base, over) {
 function normalize(raw) {
   return {
     savedAt: raw?.savedAt || 0,
+    // When stats and the session history were last reset. A copy from before a reset
+    // never merges its old numbers back in (see mergeInto).
+    epochs: { stats: Number(raw?.epochs?.stats) || 0, sessions: Number(raw?.epochs?.sessions) || 0 },
     settings: fill(structuredClone(DEFAULT_SETTINGS), raw?.settings),
     stats: fill(freshStats(), raw?.stats),
     bankroll: typeof raw?.bankroll === 'number' ? raw.bankroll : RULES.bankroll,
@@ -55,7 +59,7 @@ function normalize(raw) {
   };
 }
 
-const FIELDS = ['savedAt', 'settings', 'stats', 'bankroll', 'session', 'sessions'];
+const FIELDS = ['savedAt', 'epochs', 'settings', 'stats', 'bankroll', 'session', 'sessions'];
 const payload = () => Object.fromEntries(FIELDS.map((k) => [k, state[k]]));
 
 // Swap in a whole new document, keeping the same state object (the app holds on to it).
@@ -71,6 +75,21 @@ const hasProgress = (s) => Object.values(s.stats).some((b) => b.runs?.length || 
 // mode 'max': two copies of the same history that drifted apart (two devices); taking
 //             the larger count never double-counts.
 function mergeInto(target, src, mode) {
+  // Two copies of one account: whichever side was reset later wins outright, so a device
+  // that was offline during a reset can't bring the old numbers back.
+  if (mode === 'max') {
+    for (const part of /** @type {const} */ (['stats', 'sessions'])) {
+      const t = target.epochs[part];
+      const s = src.epochs[part];
+      if (s === t) continue;
+      if (s > t) {
+        target.epochs[part] = s;
+        if (part === 'stats') target.stats = structuredClone(src.stats);
+        else { target.sessions = structuredClone(src.sessions); target.bankroll = src.bankroll; target.session = src.session; }
+      }
+      src = { ...src, [part === 'stats' ? 'stats' : 'sessions']: part === 'stats' ? freshStats() : [], ...(part === 'sessions' ? { session: null } : {}) };
+    }
+  }
   const num = (a, b) => (mode === 'sum' ? (a || 0) + (b || 0) : Math.max(a || 0, b || 0));
   for (const [name, bucket] of Object.entries(src.stats)) {
     const t = target.stats[name];
@@ -103,13 +122,25 @@ function mergeInto(target, src, mode) {
 }
 
 // ---- local storage --------------------------------------------------------------
-function readJSON(key) {
-  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+function readJSON(key, store = localStorage) {
+  try { return JSON.parse(store.getItem(key)); } catch { return null; }
 }
-function writeJSON(key, v) {
-  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ }
+function writeJSON(key, v, store = localStorage) {
+  try { store.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ }
 }
-const writeLocal = () => { writeJSON(KEY, state); writeJSON(META_KEY, meta); };
+// An account's copy lives in localStorage (it works offline and syncs later). A guest's
+// settings do too, but their progress only goes to this tab's sessionStorage.
+function writeLocal() {
+  if (meta.owner != null) writeJSON(KEY, state);
+  else {
+    writeJSON(KEY, { settings: state.settings });
+    writeJSON(KEY, payload(), sessionStorage);
+  }
+  writeJSON(META_KEY, meta);
+}
+function clearGuestVisit() {
+  try { sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ }
+}
 
 // ---- state ------------------------------------------------------------------------
 let state = null;
@@ -140,8 +171,16 @@ async function api(method, path, body) {
 }
 
 export async function init() {
-  state = normalize(readJSON(KEY));
   meta = { owner: null, rev: 0, pending: false, ...readJSON(META_KEY) };
+  const saved = readJSON(KEY);
+  if (meta.owner != null) state = normalize(saved);
+  else {
+    // Guest: this visit's progress plus this browser's settings. Progress a guest saved
+    // before visits stopped keeping it comes along one last time (so signing up keeps it).
+    const visit = readJSON(KEY, sessionStorage) || (saved?.stats ? saved : null);
+    state = normalize({ ...visit, settings: saved?.settings ?? visit?.settings });
+    writeLocal();
+  }
   addEventListener('pagehide', flush);
   try {
     const me = await api('GET', '/api/me');
@@ -181,6 +220,7 @@ export async function adoptUser(u, { quiet = false } = {}) {
   }
   meta.owner = u.id;
   meta.rev = remote.data.rev;
+  clearGuestVisit();
   writeLocal();
   if (meta.pending) push();
   emit();
@@ -190,7 +230,7 @@ export async function adoptUser(u, { quiet = false } = {}) {
 export function signOut() {
   user = null;
   clearTimeout(timer);
-  replaceContents(normalize(null));
+  replaceContents(normalize({ settings: state.settings }));
   meta = { owner: null, rev: 0, pending: false };
   writeLocal();
   emit();
@@ -230,9 +270,10 @@ function schedule() {
 
 export function save() {
   state.savedAt = Date.now();
-  meta.pending = true;
+  if (meta.owner != null) meta.pending = true;
   writeLocal();
   if (user) schedule();
+  saveListeners.forEach((fn) => fn());
 }
 
 // Leaving the page: send what's waiting, if it's small enough for a keepalive request.
@@ -244,7 +285,14 @@ function flush() {
   if (body.length < 60000) fetch('/api/progress', { method: 'PUT', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {});
 }
 
-export function resetStats() { state.stats = freshStats(); save(); }
+export function resetStats() { state.stats = freshStats(); state.epochs.stats = Date.now(); save(); }
+
+// ---- progress hooks (the sign-up nudge) ---------------------------------------------
+const saveListeners = new Set();
+/** Called after every save, with how much the visitor has done so far. */
+export const onSave = (fn) => { saveListeners.add(fn); return () => saveListeners.delete(fn); };
+/** The current stats (this visit's, for a guest). */
+export const activityStats = () => state.stats;
 
 export function addRun(bucket, run) {
   tally('drill');

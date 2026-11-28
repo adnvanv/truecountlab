@@ -71,8 +71,6 @@
 .b-progress { font-variant-numeric: tabular-nums; }
 .b-q { font-size: 1.25rem; font-weight: 700; }
 .b-help { margin: 0; max-width: 46ch; }
-.b-tc { display: flex; align-items: center; gap: 1.5rem; text-align: left; }
-.b-tc .big { font-size: 2.6rem; font-weight: 800; }
 .b-hand { display: flex; align-items: flex-end; justify-content: center; gap: 1.6rem; flex-wrap: wrap; }
 .b-hand .zone-label { text-align: center; margin-bottom: 0.3rem; }
 .b-reveal { display: flex; flex-direction: column; gap: 0.3rem; align-items: center; }
@@ -186,7 +184,6 @@ body[data-view="online-table"] .online { max-width: none; }
 @media (max-width: 640px) {
   .ol-cards { grid-template-columns: 1fr; }
   .ol-rooms td:nth-child(2) { display: none; }
-  .b-tc { flex-direction: column; text-align: center; }
   .b-standings li { grid-template-columns: 2rem 1fr 3.4rem; }
   .b-standings li > :nth-child(4), .b-standings li > :nth-child(5) { grid-column: 2 / -1; font-size: 0.82rem; }
 }

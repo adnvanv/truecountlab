@@ -1,6 +1,5 @@
 import * as store from './store.js';
 import * as countdown from './views/countdown.js';
-import * as truecount from './views/truecount.js';
 import * as basic from './views/basic.js';
 import * as deviation from './views/deviation.js';
 import * as table from './views/table.js';
@@ -14,11 +13,11 @@ import * as accountView from './views/account.js';
 import * as play from './views/play.js';
 import { h } from './ui.js';
 import { configure as configureSound, loadSamples } from './sfx.js';
+import { init as initNudge } from './nudge.js';
 
 const VIEWS = [
   { id: 'home', label: 'Home', mount: home.mount },
   { id: 'countdown', n: '1', label: 'Countdown', mount: countdown.mount },
-  { id: 'truecount', n: '2', label: 'True Count', mount: truecount.mount },
   { id: 'basic', n: '3', label: 'Basic Strategy', mount: basic.mount },
   { id: 'deviation', n: '4', label: 'Deviations', mount: deviation.mount },
   { id: 'table', n: '5', label: 'Table', mount: table.mount },
@@ -34,6 +33,7 @@ const VIEWS = [
 ];
 
 const state = await store.init();
+initNudge();
 configureSound(state.settings.sound);
 loadSamples();
 const ctx = {
@@ -51,7 +51,6 @@ nav.append(...VIEWS.filter((v) => !v.hidden).map((v) => h('a', { href: `#${v.id}
 // ---- phone navigation: bottom tab bar + bottom sheets ---------------------
 const DRILLS = [
   ['countdown', '1', 'Countdown', '15–20 cards, then the count'],
-  ['truecount', '2', 'True Count', 'Running count ÷ decks'],
   ['basic', '3', 'Basic Strategy', 'Hands vs upcards + heatmap'],
   ['deviation', '4', 'Deviations', 'Basic or the index play?'],
 ];

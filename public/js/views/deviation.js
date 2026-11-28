@@ -40,6 +40,7 @@ export function mount(root, ctx) {
   const S = ctx.settings;
   const cfg = S.deviation;
   const st = ctx.stats.deviation;
+  const since = Date.now(); // this session
   const devs = activeDevs(S.surrender);
   let sc = null;
   let answered = false;
@@ -125,15 +126,15 @@ export function mount(root, ctx) {
     if (ok && cfg.auto) autoTimer = setTimeout(next, 900);
   }
 
+  // Practice shows this session only; signed-in players see all-time numbers on Stats.
   function renderRecord() {
-    const runs = st.runs;
+    const runs = st.runs.filter((r) => r.t >= since);
     let streak = 0;
     for (let k = runs.length - 1; k >= 0 && runs[k].ok; k--) streak++;
     const near = runs.filter((r) => r.offset != null && Math.abs(r.offset) <= 1);
     record.replaceChildren(
       h('span', {}, `Streak ${streak}`),
-      h('span', {}, `Accuracy ${pct(runs.filter((r) => r.ok).length, runs.length)} (${runs.length})`),
-      h('span', {}, `Last 100 ${pct(runs.slice(-100).filter((r) => r.ok).length, Math.min(100, runs.length))}`),
+      h('span', {}, `This session ${pct(runs.filter((r) => r.ok).length, runs.length)} (${runs.length})`),
       h('span', {}, `Within ±1 of the index ${pct(near.filter((r) => r.ok).length, near.length)}`));
     const rows = [];
     for (const [g, label] of Object.entries(DEV_GROUPS)) {

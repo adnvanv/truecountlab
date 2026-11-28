@@ -365,11 +365,10 @@ try {
     for (let n = 0; n < 150; n++) {
       const room = fakeRoom();
       room.add('p1');
-      const b = new Battle(room, { rounds: 12, types: ['rc', 'tc', 'play'] });
+      const b = new Battle(room, { rounds: 12, types: ['rc', 'play'] });
       b.start();
       for (const r of b.rounds) {
         if (r.type === 'rc' && r.answer !== r.cards.reduce((a, c) => a + C.hiLo(c), 0)) bad++;
-        if (r.type === 'tc' && r.answer !== C.trueCount(r.rc, C.decksEstimate(312 - r.dealt))) bad++;
         if (r.type === 'play') {
           if (S.isBlackjack(r.cards)) bj++;
           if (!['H', 'S', 'D', 'P'].includes(r.answer) || (r.answer === 'P' && !r.canSplit)) bad++;
@@ -383,13 +382,13 @@ try {
   {
     const room = fakeRoom();
     const p1 = room.add('p1'); const p2 = room.add('p2'); const p3 = room.add('p3');
-    const b = new Battle(room, { rounds: 6, types: ['tc'] });
+    const b = new Battle(room, { rounds: 6, types: ['play'] });
     b.start();
     await until(() => b.phase === 'answer', 2000, 'answer');
     const r = b.rounds[b.i];
     ok(b.action(p1, { a: 'answer', value: null }) === null && !r.answers.has('p1'), 'a missing answer isn’t taken as 0');
     b.action(p1, { a: 'answer', value: r.answer });
-    b.action(p2, { a: 'answer', value: r.answer + 1 });
+    b.action(p2, { a: 'answer', value: r.answer === 'H' ? 'S' : 'H' });
     p3.connected = false; b.onDisconnect(p3);
     await until(() => b.phase === 'reveal', 2000, 'reveal');
     const pl = b.players;

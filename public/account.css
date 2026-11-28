@@ -105,3 +105,25 @@ main.privacy ul { padding-left: 1.2rem; }
 main.privacy li { margin-bottom: 0.4rem; }
 main.privacy a:not(.btn) { color: var(--gold); }
 main.privacy code { background: rgba(0, 0, 0, 0.3); padding: 0 0.3rem; border-radius: 4px; }
+
+/* Sign-up nudge (shown once, after a guest's first drill) */
+dialog.nudge {
+  padding: 0; border: 1px solid rgba(227, 188, 95, 0.45); border-radius: 18px; max-width: min(440px, calc(100vw - 32px));
+  background: linear-gradient(180deg, #0f3a2a, #082419); color: var(--ink); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+dialog.nudge::backdrop { background: rgba(2, 10, 7, 0.65); backdrop-filter: blur(2px); }
+.nudge-body { padding: 1.4rem 1.4rem 1.1rem; text-align: center; }
+.nudge-badge { width: 2.6rem; height: 2.6rem; margin: 0 auto 0.6rem; border-radius: 50%; display: grid; place-items: center; background: var(--gold); color: #1d1606; font-size: 1.3rem; font-weight: 800; }
+.nudge h2 { margin: 0 0 0.5rem; font-size: 1.3rem; }
+.nudge-result { font-weight: 600; color: var(--gold); margin: 0 0 0.6rem; }
+.nudge p { line-height: 1.5; }
+.nudge-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; align-items: center; margin-top: 1rem; }
+.nudge-fine { font-size: 0.82rem; margin: 0.8rem 0 0; }
+
+/* Stats for guests: what an account unlocks */
+.lock-card { max-width: 560px; text-align: center; margin: 0 auto; }
+.lock-card .row { justify-content: center; }
+.lock-icon { font-size: 2rem; }
+.lock-list { text-align: left; display: inline-block; margin: 0.4rem auto 1rem; line-height: 1.7; }
+.lock-card .small { font-size: 0.85rem; margin-top: 0.8rem; }
+.nudge-actions a.btn { text-decoration: none; }

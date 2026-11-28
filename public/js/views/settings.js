@@ -27,7 +27,7 @@ export function mount(root, ctx) {
         }))),
       h('div', { class: 'panel form' },
         h('h2', {}, 'Data'),
-        h('p', { class: 'muted' }, syncing() ? 'Progress saves to your account, so it follows you to every device you sign in on. ' : 'Progress is saved in this browser only. ', h('a', { href: '#account' }, syncing() ? 'Manage your account' : 'Create a free account to keep it everywhere'), '.'),
+        h('p', { class: 'muted' }, syncing() ? 'Progress saves to your account, so it follows you to every device you sign in on. ' : 'As a guest, your progress lasts until you close this tab. ', h('a', { href: '#account' }, syncing() ? 'Manage your account' : 'Create a free account to keep it'), '.'),
         h('div', { class: 'row' },
           h('button', {
             class: 'btn',

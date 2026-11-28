@@ -1,6 +1,6 @@
 // Count battle: everyone gets the same question at the same moment and races to answer.
-// Rounds: running count (cards flash by, then type the count), true count (a running
-// count and a discard tray), and play the hand (a hand, an upcard and a true count).
+// Rounds: running count (cards flash by, then type the count) and play the hand (a hand,
+// an upcard and a true count).
 // Right answers score 100 plus up to 100 for speed. The server holds the answers and
 // the clock; browsers only ever see what's on screen right now.
 'use strict';
@@ -12,7 +12,7 @@
 /** @typedef {import('../types').GameMessage} GameMessage */
 /** @typedef {import('../types').Game} Game */
 /** @typedef {import('../types').Card} Card */
-/** @typedef {'rc' | 'tc' | 'play'} RoundType */
+/** @typedef {'rc' | 'play'} RoundType */
 /** @typedef {'waiting' | 'intro' | 'show' | 'answer' | 'reveal' | 'final'} Phase */
 /** @typedef {{ rank: string, suit: string }} PlainCard */
 /** @typedef {number | string} Answer a count, or a play letter (H S D P) */
@@ -25,8 +25,6 @@
  * @property {Map<string, { value: Answer, ms: number }>} answers by player id
  * @property {PlainCard[]} [cards] rc: the cards to flash; play: the player's hand
  * @property {number} [pace] rc: ms per card
- * @property {number} [rc] tc: the running count
- * @property {number} [dealt] tc: cards in the discard tray
  * @property {PlainCard} [up] play: the dealer's upcard
  * @property {number} [tc] play: the true count
  * @property {boolean} [canSplit] play: the hand is a pair
@@ -45,9 +43,9 @@ module.exports = ({ cards: C, strategy: S }, records) => {
   /** @param {number} n */
   const ms = (n) => Math.round(n * SCALE);
   /** @type {RoundType[]} */
-  const TYPES = ['rc', 'tc', 'play'];
+  const TYPES = ['rc', 'play'];
   /** @type {Record<RoundType, number>} answer windows, ms */
-  const WINDOW = { rc: 12000, tc: 15000, play: 10000 };
+  const WINDOW = { rc: 12000, play: 10000 };
   const INTRO = 3500;
   const REVEAL = 5500;
   const AUTO_START = 20000;
@@ -89,15 +87,6 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       const cards = C.shuffleInPlace(C.makeDecks(1)).slice(0, n).map(plain);
       const answer = cards.reduce((s, c) => s + C.hiLo(c), 0);
       return { type, cards, pace, answer, answers, explain: `${n} cards, running count ${answer > 0 ? '+' : ''}${answer}` };
-    }
-    if (type === 'tc') {
-      const halves = 3 + C.randInt(9); // 1.5 … 5.5 decks left
-      const remaining = halves * 26 + C.randInt(15) - 7; // never enough to change the estimate
-      let rc = 0;
-      while (rc === 0) rc = C.randInt(29) - 14;
-      const est = C.decksEstimate(remaining);
-      const answer = C.trueCount(rc, est);
-      return { type, rc, dealt: C.RULES.decks * 52 - remaining, answer, answers, explain: `${rc > 0 ? '+' : ''}${rc} ÷ ${est} decks = ${(rc / est).toFixed(2)}, rounded down` };
     }
     // Play the hand: mostly hands near a deviation index, some plain basic strategy.
     /** @type {Card[]} */
@@ -159,7 +148,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     status() { return this.playing ? 'playing' : 'waiting'; }
     seatCount() { return this.players.size; }
     hasRoom() { return !this.playing && this.room.members.size < MAX_PLAYERS; }
-    summary() { return `${this.settings.rounds} rounds · ${this.settings.types.map((t) => ({ rc: 'running count', tc: 'true count', play: 'play the hand' })[t]).join(', ')}`; }
+    summary() { return `${this.settings.rounds} rounds · ${this.settings.types.map((t) => ({ rc: 'running count', play: 'play the hand' })[t]).join(', ')}`; }
 
     /** Run fn after delay ms, replacing whatever was scheduled. @param {number} delay @param {() => void} fn */
     after(delay, fn) {
@@ -350,9 +339,6 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           q.total = cards.length;
           q.pace = ms(Number(r.pace));
           if (this.phase === 'show') { q.index = this.cardIndex; q.card = cards[this.cardIndex]; }
-        } else if (r.type === 'tc') {
-          q.rc = r.rc;
-          q.dealt = r.dealt;
         } else {
           q.cards = r.cards; q.up = r.up; q.tc = r.tc; q.canSplit = r.canSplit;
         }

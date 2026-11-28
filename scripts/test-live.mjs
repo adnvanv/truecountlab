@@ -61,7 +61,6 @@ async function signup(name) {
 // Answer a battle round correctly from what's on screen.
 function rightAnswer(round, seen) {
   if (round.type === 'rc') return seen.reduce((s, c) => s + C.hiLo(c), 0);
-  if (round.type === 'tc') return C.trueCount(round.rc, C.decksEstimate(C.RULES.decks * 52 - round.dealt));
   return S.correctAction(round.cards, S.upValue(round.up), { canDouble: true, canSplit: round.canSplit, canSurrender: false }, round.tc).action;
 }
 
@@ -107,7 +106,7 @@ try {
   const bob = client('Bob'); await bob.hello();
 
   console.log('Private battle with chat');
-  alice.send({ t: 'create', kind: 'battle', visibility: 'private', settings: { rounds: 6, types: ['rc', 'tc', 'play'] } });
+  alice.send({ t: 'create', kind: 'battle', visibility: 'private', settings: { rounds: 6, types: ['rc', 'play'] } });
   await until(() => alice.room, 3000, 'room');
   const code = alice.room.code;
   ok(/^[A-Z2-9]{6}$/.test(code) && alice.room.hostId === alice.you.id, 'Alice hosts a private room with a 6-letter code');

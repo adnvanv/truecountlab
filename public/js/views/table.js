@@ -215,7 +215,7 @@ export function mount(root, ctx, { training = false } = {}) {
       h('div', { class: 'hud-info' },
         training ? stat('Practice chips', `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})`)
           : stat('Session stack', s ? `${money(s.stack)} (${money(s.stack - s.buyIn, { sign: true })})` : '—'),
-        training ? stat('Decisions', `${pct(T.correct, T.decisions)} of ${T.decisions}`) : stat('Bankroll', money(G.bankroll + stack())),
+        training ? stat('This session', `${pct(s.correct || 0, s.decisions || 0)} of ${s.decisions || 0} decision${s.decisions === 1 ? '' : 's'}`) : stat('Bankroll', money(G.bankroll + stack())),
         stat(training ? 'Hands' : 'Hands this session', s ? String(s.hands || 0) : '—'),
         h('div', { class: `stat count${reveal ? ' on' : ''}` },
           h('span', { class: 'k' }, 'Count'),
@@ -548,7 +548,10 @@ export function mount(root, ctx, { training = false } = {}) {
     render();
     ctx.save();
 
-    const due = S.countCheck === 'every' || (S.countCheck === 'random' && Math.random() < 0.3) || (S.countCheck === 'shoe' && shoe.pastCut);
+    // Training asks for the running count now and then; the true count shows up in the bet anyway.
+    const due = training
+      ? S.countCheck !== 'off' && Math.random() < 0.3
+      : S.countCheck === 'every' || (S.countCheck === 'random' && Math.random() < 0.3) || (S.countCheck === 'shoe' && shoe.pastCut);
     if (due) await countCheck();
     if (!alive) return;
     if (shoe.pastCut) {
@@ -613,7 +616,7 @@ export function mount(root, ctx, { training = false } = {}) {
     return new Promise((/** @type {(v?: unknown) => void} */ resolve) => {
       phase = 'check';
       const rcF = numberField('Running count');
-      const tcF = numberField('True count');
+      const tcF = training ? null : numberField('True count');
       const result = h('div', { class: 'check-result' });
       const btn = h('button', { class: 'btn primary', type: 'submit' }, 'Check');
       let answered = false;
@@ -625,20 +628,20 @@ export function mount(root, ctx, { training = false } = {}) {
           answered = true;
           const rcOk = rcF.value === rc;
           const cands = tcCandidates(rc, shoe.remaining);
-          const tcOk = cands.includes(tcF.value);
+          const tcOk = !tcF || cands.includes(tcF.value);
           count('checks', rcOk && tcOk);
           if (rcOk && tcOk) sfx.right(); else sfx.wrong();
           const est = decksEstimate(shoe.remaining);
           result.replaceChildren(
             h('div', { class: rcOk ? 'good' : 'bad' }, `${rcOk ? '✓' : '✗'} Running count ${signed(rc)}${rcOk ? '' : ` (you said ${rcF.value == null ? '—' : signed(rcF.value)})`}`),
-            h('div', { class: tcOk ? 'good' : 'bad' }, `${tcOk ? '✓' : '✗'} True count ${signed(cands[0])} = ${signed(rc)} ÷ ${est} decks, rounded down`));
+            ...(tcF ? [h('div', { class: tcOk ? 'good' : 'bad' }, `${tcOk ? '✓' : '✗'} True count ${signed(cands[0])} = ${signed(rc)} ÷ ${est} decks, rounded down`)] : []));
           btn.textContent = 'Continue';
           btn.focus();
           ctx.save();
         },
       },
       h('div', { class: 'check-title' }, 'Count check'),
-      h('div', { class: 'check-fields' }, rcF.el, tcF.el, btn),
+      h('div', { class: 'check-fields' }, rcF.el, tcF?.el, btn),
       result);
       controls.replaceChildren(form);
       rcF.input.focus();
@@ -686,7 +689,7 @@ export function mount(root, ctx, { training = false } = {}) {
   }
   addEventListener('keydown', onKey);
 
-  if (training) note(`Training table: ${money(PRACTICE)} in practice chips. Press X to toggle the cheat panel (count, true count, bet and the correct play).`, 'info');
+  if (training) note(`Training table: ${money(PRACTICE)} in practice chips. Accuracy here is for this session only. Press X to toggle the cheat panel (count, true count, bet and the correct play).`, 'info');
   else if (sess()) note(`Session in progress: ${money(stack())} stack. New shoe — count starts at 0.`, 'info');
   setBet(MIN);
   render();

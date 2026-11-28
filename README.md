@@ -5,7 +5,7 @@
 ![plays graded](https://img.shields.io/endpoint?url=https%3A%2F%2Ftruecountlab.com%2Fapi%2Fbadge%2Fgraded)
 ![accounts](https://img.shields.io/endpoint?url=https%3A%2F%2Ftruecountlab.com%2Fapi%2Fbadge%2Faccounts)
 
-A blackjack card-counting trainer with real-time multiplayer, live at **[truecountlab.com](https://truecountlab.com)**. Drill Hi-Lo counting, true counts, basic strategy and deviations, play full shoes, or sit at a shared table and race other players in count battles. The server deals every card and grades every play.
+A blackjack card-counting trainer with real-time multiplayer, live at **[truecountlab.com](https://truecountlab.com)**. Drill Hi-Lo counting, basic strategy and deviations, play full shoes, or sit at a shared table and race other players in count battles. The server deals every card and grades every play.
 
 ![A shared table: five players, your hand in the middle, private grading in the side column](docs/screenshots/shared-table.jpg)
 
@@ -79,15 +79,15 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 
 **Solo modes**
 - **Countdown:** flash cards from a fresh deck, then enter the running count. The goal is deck pace (≤ 0.58 s a card).
-- **True Count:** a running count and a discard tray. Mistakes are classified (rounding, decks played instead of remaining, a bad deck estimate).
 - **Basic Strategy:** random hands with instant feedback and a mistake heatmap.
 - **Deviations:** hands at a given true count, weighted toward the deviations you miss, plus a threshold drill.
-- **Table:** full shoes with simulated players. Your play, deviations and bets are graded, with random count checks. **Training** is the same table with a cheat panel.
+- **Table:** full shoes with simulated players. Your play, deviations and bets are graded, with random count checks. **Training** is the same table with a cheat panel and practice chips; it asks for the running count only (the bet already tests the true count).
+- **Practice shows this session only.** Training and the drills show accuracy since you opened them; all-time numbers are on Stats (signed in).
 - **Sessions, Stats, Bankroll Calc:** logged results, accuracy over time, and EV / SD / risk of ruin from a simulated true-count distribution.
-- **Home:** a ready-to-play checklist that unlocks when all four gates hold at once: deck-pace countdowns, 98% basic strategy, 95% true count and 95% deviations.
+- **Home:** a ready-to-play checklist that unlocks when all three gates hold at once: deck-pace countdowns, 98% basic strategy and 95% deviations.
 
 **Online** (`#play`)
-- **Count battles:** running-count, true-count and play-the-hand rounds. Everyone gets the same question at the same moment, and a right answer scores 100 plus up to 100 for speed.
+- **Count battles:** running-count and play-the-hand rounds. Everyone gets the same question at the same moment, and a right answer scores 100 plus up to 100 for speed.
 - **Shared tables:** 5 seats, $500 in table chips, private grading. Letting a timer run out is graded as what happens (stand, no insurance, a missed check), and missing the bet timer gives up your seat.
 - **Rooms:** quick play, private rooms by code or invite link, host controls, and room chat (masked, rate-limited, never saved).
 - **Leaderboards** for signed-in players: battle Elo, wins (outright first only), battle accuracy, and table play and count-check accuracy.
@@ -100,7 +100,8 @@ Static, crawlable pages at [`/learn`](https://truecountlab.com/learn): how to co
 ## Accounts and privacy
 - **Sign-in:** email + password (scrypt), or Google / Discord. A provider login is never auto-merged into a password account with the same email; you connect it from the Account page.
 - **Sessions:** random tokens in `HttpOnly`, `SameSite=Lax` cookies (`Secure` on https). Only their SHA-256 is stored.
-- **Sync:** one JSON document per account with a revision number. A stale save gets `409` plus the newer copy, and the client merges and retries.
+- **Sync:** one JSON document per account with a revision number. A stale save gets `409` plus the newer copy, and the client merges and retries. Resets carry a timestamp, so a device that was offline during a reset can't merge the old numbers back.
+- **Guests:** settings stay in the browser, but progress lasts for the visit only (the tab's `sessionStorage`, so it survives a sign-in redirect). Signing up keeps it. After a guest's first drill, a one-time popup offers an account.
 - **Protection:** rate limits per IP and per account, origin checks on every write and every WebSocket, a Content-Security-Policy, and HSTS.
 - **Your data:** export or delete your account from the Account page. Usage totals are anonymous counts only. See [`/privacy`](https://truecountlab.com/privacy).
 

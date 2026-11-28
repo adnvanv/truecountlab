@@ -1,14 +1,13 @@
 // Count battle screen inside an online room. The server sends the whole state; this
 // draws it and sends answers back. Answer fields are kept across updates so typing
 // isn't interrupted when someone else answers.
-import { h, cardEl, trayEl, numberField, signed, typingInField } from '../ui.js';
+import { h, cardEl, numberField, signed, typingInField } from '../ui.js';
 import { sfx } from '../sfx.js';
 import * as online from '../online.js';
 
-const TYPE_NAME = { rc: 'Running count', tc: 'True count', play: 'Play the hand' };
+const TYPE_NAME = { rc: 'Running count', play: 'Play the hand' };
 const TYPE_HELP = {
   rc: 'Cards flash by. Keep the Hi-Lo count, then type it.',
-  tc: 'Estimate the decks left from the tray (nearest half deck), divide and round down.',
   play: 'Pick the right play at this true count, deviations included.',
 };
 const ACTS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
@@ -105,12 +104,6 @@ export function battleUI() {
     lastCard = -1;
     const parts = [];
     if (r.type === 'rc') parts.push(h('div', { class: 'b-q' }, `${r.total} cards. What's the running count?`));
-    if (r.type === 'tc') {
-      parts.push(h('div', { class: 'b-tc' },
-        h('div', { class: 'tc-tray' }, trayEl(r.dealt, 6, { tall: true })),
-        h('div', {}, h('div', { class: 'muted' }, 'Running count'), h('div', { class: 'big mono' }, signed(r.rc)),
-          h('div', { class: 'b-q' }, 'What’s the true count?'))));
-    }
     if (r.type === 'play') {
       parts.push(h('div', { class: 'b-hand' },
         h('div', {}, h('div', { class: 'zone-label' }, 'Dealer'), h('div', { class: 'hand' }, cardEl(r.up))),
@@ -138,7 +131,7 @@ export function battleUI() {
 
   function waiting() {
     const host = isHost();
-    const types = [['rc', 'Running count'], ['tc', 'True count'], ['play', 'Play the hand']];
+    const types = [['rc', 'Running count'], ['play', 'Play the hand']];
     const n = room.members.filter((m) => m.connected).length;
     const settings = host
       ? h('div', { class: 'b-settings' },

@@ -7,7 +7,6 @@ import { currentUser } from '../store.js';
 const MODES = [
   ['/learn', 'Learn to Count', 'New to counting? Step-by-step guides, from Hi-Lo to index plays.'],
   ['#countdown', 'Countdown', '15–20 cards, then name the count.'],
-  ['#truecount', 'True Count', 'Running count ÷ decks from the tray.'],
   ['#basic', 'Basic Strategy', 'Random hands, instant feedback, heatmap.'],
   ['#deviation', 'Deviations', 'Basic play or the index play?'],
   ['#table', 'Table', 'Real sessions: $500 buy-in, stop-loss.'],
@@ -22,7 +21,7 @@ export function mount(root, ctx) {
   const G = ctx.state;
   root.append(h('section', { class: 'view home' },
     currentUser() ? null : h('div', { class: 'guest-banner' },
-      h('span', {}, "You're playing as a guest, so your progress is saved in this browser only. Create a free account to keep it on every device."),
+      h('span', {}, "You're playing as a guest, so nothing you do is kept after you close this tab. Create a free account to save your progress and track it over time."),
       h('a', { class: 'btn primary sm', href: '#account?mode=signup' }, 'Create account'),
       h('a', { class: 'link', href: '#account' }, 'Sign in')),
     h('div', { class: `ready-card ${r.ready ? 'unlocked' : 'locked'}` },
@@ -32,7 +31,7 @@ export function mount(root, ctx) {
           h('h1', {}, r.ready ? 'Ready to play' : 'Ready-to-play checklist'),
           h('p', { class: 'sub' }, r.ready
             ? 'You’ve cleared every gate. Keep these numbers up, and log your casino sessions in Sessions.'
-            : `Locked — ${r.done} of 4 complete. All four must be met at the same time.`))),
+            : `Locked — ${r.done} of ${r.items.length} complete. All of them must be met at the same time.`))),
       h('ol', { class: 'gates' }, r.items.map((i) => h('li', { class: i.met ? 'met' : '' },
         h('span', { class: 'gate-check', 'aria-label': i.met ? 'complete' : 'incomplete' }, i.met ? '✓' : ''),
         h('div', { class: 'gate-body' },

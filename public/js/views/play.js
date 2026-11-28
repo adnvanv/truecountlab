@@ -58,7 +58,7 @@ export function mount(root, ctx) {
     const statusText = st === 'ready' ? `${lobby.online} online now` : st === 'needName' ? online.error() : st === 'connecting' ? 'Connecting…' : 'Offline. Reconnecting…';
     const codeInput = h('input', { class: 'text-input code', placeholder: 'ABC123', maxlength: 6, autocomplete: 'off', 'aria-label': 'Room code' });
     const ready = st === 'ready';
-    const settingsFor = () => ({ rounds: 9, types: ['rc', 'tc', 'play'] });
+    const settingsFor = () => ({ rounds: 9, types: ['rc', 'play'] });
     const card = (kind, title, desc) => h('div', { class: 'panel ol-card' },
       h('h2', {}, title), h('p', { class: 'muted' }, desc),
       h('div', { class: 'row' },
@@ -80,7 +80,7 @@ export function mount(root, ctx) {
       notice ? h('div', { class: `notice ${notice.kind}` }, notice.text) : null,
       h('div', { class: 'panel ol-status' }, who, h('div', { class: `ol-online ${st === 'ready' ? 'good' : st === 'needName' ? 'bad' : 'muted'}` }, statusText)),
       h('div', { class: 'ol-cards' },
-        card('battle', 'Count battle', 'Up to 8 players get the same question at the same time: running counts, true counts and hands to play. Right and fast wins.'),
+        card('battle', 'Count battle', 'Up to 8 players get the same question at the same time: running counts and hands to play at a given true count. Right and fast wins.'),
         card('table', 'Shared table', 'Up to 5 players at one 6-deck shoe with $500 in table chips. Your bets, plays and count checks are graded privately.')),
       h('form', {
         class: 'panel ol-code',

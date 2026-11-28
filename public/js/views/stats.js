@@ -1,13 +1,12 @@
 // Stats per mode: accuracy, speed, error types, progress over time.
 import { h, head, pct, secs, lineChart, dailyAccuracy, money } from '../ui.js';
-import { TC_ERRORS } from './truecount.js';
 import { DEV_ERRORS } from './deviation.js';
 import { heatmapEl } from './basic.js';
 import { ACTIONS, DEVS } from '../strategy.js';
+import { currentUser } from '../store.js';
 
 const MODES = [
   { id: 'countdown', label: 'Countdown', link: '#countdown' },
-  { id: 'truecount', label: 'True Count', link: '#truecount' },
   { id: 'basic', label: 'Basic Strategy', link: '#basic' },
   { id: 'deviation', label: 'Deviations', link: '#deviation' },
   { id: 'table', label: 'Table', link: '#table' },
@@ -58,7 +57,6 @@ function detail(id, s, G) {
     const extra = [['Best correct', best ? secs(best) : '—'], ['Correct at deck pace', runs.filter((r) => r.goal).length]];
     return [numbers([...base, ...extra]), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => diffBucket(r.diff))), progress(runs)];
   }
-  if (id === 'truecount') return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => TC_ERRORS[r.err] || 'Other')), progress(runs)];
   if (id === 'basic') {
     return [numbers(base), h('h3', {}, 'Error types'), errorBars(tally(runs, (r) => `Should ${ACTIONS[r.want]?.toLowerCase()}, chose ${ACTIONS[r.chose]?.toLowerCase()}`)),
       progress(runs), h('h3', {}, 'Mistake heatmap'), heatmapEl(st.cells)];
@@ -100,7 +98,28 @@ function detail(id, s, G) {
   ];
 }
 
+// Guests: progress over time is what an account is for.
+function locked() {
+  return h('section', { class: 'view' },
+    head('Stats', 'Your accuracy, speed, weak spots and progress over time, for every mode.'),
+    h('div', { class: 'panel lock-card' },
+      h('div', { class: 'lock-icon', 'aria-hidden': 'true' }, '🔒'),
+      h('h2', {}, 'Track your progress with a free account'),
+      h('p', { class: 'muted' }, 'Guests can use every mode, but nothing is kept after the tab closes. With an account you get:'),
+      h('ul', { class: 'lock-list' },
+        h('li', {}, 'Accuracy and speed over time for every drill'),
+        h('li', {}, 'A heatmap of the hands you miss most'),
+        h('li', {}, 'Your table sessions, bankroll and results'),
+        h('li', {}, 'An online rating and a spot on the leaderboards'),
+        h('li', {}, 'Your own custom strategies')),
+      h('div', { class: 'row' },
+        h('a', { class: 'btn primary', href: '#account?mode=signup' }, 'Create a free account'),
+        h('a', { class: 'btn', href: '#account' }, 'Sign in')),
+      h('p', { class: 'muted small' }, 'Anything you’ve done this visit comes with you when you sign up.')));
+}
+
 export function mount(root, ctx) {
+  if (!currentUser()) { root.append(locked()); return; }
   let current = 'countdown';
   const draw = () => {
     const s = ctx.stats;

@@ -13,6 +13,7 @@ const RANGE_LABELS = [['10-15', '10–15 cards'], ['15-20', '15–20 cards'], ['
 export function mount(root, ctx) {
   const cfg = ctx.settings.countdown;
   const st = ctx.stats.countdown;
+  const since = Date.now(); // this session
   let alive = true;
   let runId = 0;
   let phase = 'idle'; // idle | running | answer | result
@@ -53,14 +54,15 @@ export function mount(root, ctx) {
     h('div', { class: 'stage-wrap' }, h('div', { class: 'stage-box' }, stage)),
     answer, record));
 
+  // Practice shows this session only; signed-in players see all-time numbers on Stats.
   function renderRecord() {
-    const runs = st.runs;
+    const runs = st.runs.filter((r) => r.t >= since);
     const ok = runs.filter((r) => r.ok);
     const best = ok.length ? Math.min(...ok.map((r) => r.ms)) : null;
     const goals = runs.filter((r) => r.goal).length;
     const last = runs.slice(-12);
     record.replaceChildren(
-      h('span', {}, `Accuracy ${runs.length ? Math.round((100 * ok.length) / runs.length) : 0}% (${runs.length})`),
+      h('span', {}, `This session ${runs.length ? Math.round((100 * ok.length) / runs.length) : 0}% (${runs.length})`),
       h('span', {}, `Best ${best ? secs(best) : '—'}`),
       h('span', {}, `Goal met ${goals}×`),
       h('span', { class: 'dots' }, last.map((r) => h('i', { class: r.goal ? 'gold' : r.ok ? 'ok' : 'no', title: `${r.ok ? 'correct' : 'miss'} · ${secs(r.ms)}` }))));

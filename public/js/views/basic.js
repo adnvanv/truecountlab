@@ -70,6 +70,7 @@ function handForCell(c) {
 export function mount(root, ctx) {
   const cfg = ctx.settings.basic;
   const st = ctx.stats.basic;
+  const since = Date.now(); // this session
   let sc = null;
   let answered = false;
   let autoTimer = null;
@@ -142,16 +143,25 @@ export function mount(root, ctx) {
     if (ok && cfg.auto) autoTimer = setTimeout(next, 700);
   }
 
+  // Practice shows this session only; signed-in players see all-time numbers on Stats.
   function renderRecord() {
-    const runs = st.runs;
+    const runs = st.runs.filter((r) => r.t >= since);
     let streak = 0;
     for (let k = runs.length - 1; k >= 0 && runs[k].ok; k--) streak++;
     const last50 = runs.slice(-50);
+    /** @type {Record<string, { n: number, miss: number }>} */
+    const cells = {};
+    for (const r of runs) {
+      if (!r.cell) continue;
+      const c = (cells[r.cell] ||= { n: 0, miss: 0 });
+      c.n++;
+      if (!r.ok) c.miss++;
+    }
     record.replaceChildren(
       h('span', {}, `Streak ${streak}`),
-      h('span', {}, `Last 50: ${last50.length ? Math.round((100 * last50.filter((r) => r.ok).length) / last50.length) : 0}%`),
-      h('span', {}, `All time: ${runs.length ? Math.round((100 * runs.filter((r) => r.ok).length) / runs.length) : 0}% (${runs.length})`));
-    heat.replaceChildren(heatmapEl(st.cells));
+      h('span', {}, `This session: ${runs.length ? Math.round((100 * runs.filter((r) => r.ok).length) / runs.length) : 0}% (${runs.length})`),
+      ...(runs.length > 50 ? [h('span', {}, `Last 50: ${Math.round((100 * last50.filter((r) => r.ok).length) / last50.length)}%`)] : []));
+    heat.replaceChildren(heatmapEl(cells));
   }
 
   function onKey(e) {
