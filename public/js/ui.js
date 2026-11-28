@@ -81,7 +81,8 @@ export function numberField(placeholder = '') {
   };
 }
 
-export const head = (title, sub) => h('header', { class: 'view-head' }, h('h1', {}, title), sub ? h('p', { class: 'sub' }, sub) : null);
+/** A view's title and subtitle (the subtitle can be several pieces, links included). @param {string} title @param {...any} sub */
+export const head = (title, ...sub) => h('header', { class: 'view-head' }, h('h1', {}, title), sub.length && sub[0] ? h('p', { class: 'sub' }, ...sub) : null);
 export const field = (label, control, hint) => h('label', { class: 'field' }, h('span', { class: 'field-label' }, label), control, hint ? h('span', { class: 'hint' }, hint) : null);
 export function select(options, value, onChange) {
   return h('select', { onchange: (e) => onChange(e.target.value) },

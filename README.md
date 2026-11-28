@@ -84,7 +84,9 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 - **Table:** full shoes with simulated players. Your play, deviations and bets are graded, with random count checks. **Training** is the same table with a cheat panel and practice chips; it asks for the running count only (the bet already tests the true count).
 - **Practice shows this session only.** Training and the drills show accuracy since you opened them; all-time numbers are on Stats (signed in).
 - **Sessions, Stats, Bankroll Calc:** logged results, accuracy over time, and EV / SD / risk of ruin from a simulated true-count distribution.
-- **Home:** a ready-to-play checklist that unlocks when all three gates hold at once: deck-pace countdowns, 98% basic strategy and 95% deviations.
+- **Home:** a four-step start-here path (guides, basic strategy, the count, the Training Table) with the next step highlighted, then practice modes and the scored ones ("Test yourself": the Table and Online) in separate sections, and a ready-for-a-casino checklist that unlocks when all three gates hold at once: deck-pace countdowns, 98% basic strategy and 95% deviations.
+- **First-time tips:** one line the first time you open each mode (what it's for, which keys), dismissed for good with "Got it".
+- **Money:** pick the Table's starting bankroll and buy-in and the training chips in Settings. Going broke (or resetting) starts you over, but the count of resets stays on your record.
 
 **Online** (`#play`)
 - **Count battles:** running-count and play-the-hand rounds. Everyone gets the same question at the same moment, and a right answer scores 100 plus up to 100 for speed.

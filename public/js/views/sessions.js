@@ -39,7 +39,7 @@ export function mount(root, ctx) {
     const realBank = RULES.bankroll + sum(of('real'), net);
 
     root.replaceChildren(h('section', { class: 'view' },
-      head('Session Log', `Table sessions log themselves when you cash out or hit the stop-loss. Add real casino sessions below. Bankrolls start at ${money(RULES.bankroll)}, with ${money(RULES.buyIn)} buy-ins.`),
+      head('Session Log', `Table sessions log themselves when you cash out or hit the stop-loss. Add real casino sessions below. Your Table bankroll starts at ${money(ctx.settings.money.bankroll)} with ${money(ctx.settings.money.buyIn)} buy-ins${ctx.state.busts ? `, and you’ve reset it ${ctx.state.busts} time${ctx.state.busts === 1 ? '' : 's'}` : ''}.`),
       G.session ? h('div', { class: 'panel note' }, `Simulator session in progress: ${money(G.session.stack)} stack after ${G.session.hands} hands. Cash out at the Table to log it.`) : null,
       h('div', { class: 'tiles' }, summary('sim', 'Simulator', simBank), summary('real', 'Real casino', realBank)),
       h('div', { class: 'chart-block' }, h('h2', {}, 'Results over time (cumulative)'),
