@@ -25,13 +25,28 @@ const records = require('./records');
 // The browser's own card and strategy code, so the server grades with the same rules.
 /** @type {Partial<Record<Kind, GameClass>>} */
 const GAMES = {};
-const ready = Promise.all(['cards.js', 'strategy.js'].map((f) => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', f)).href)))
-  .then(([cards, strategy]) => {
+/** @type {GameLibs | null} */
+let LIBS = null;
+const ready = Promise.all(['cards.js', 'strategy.js', 'strategies.js'].map((f) => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', f)).href)))
+  .then(([cards, strategy, strategies]) => {
     /** @type {GameLibs} */
-    const libs = { cards, strategy };
+    const libs = { cards, strategy, strategies };
+    LIBS = libs;
     GAMES.battle = require('./games/battle')(libs, records);
     GAMES.table = require('./games/table')(libs, records);
   });
+
+/**
+ * The strategy a browser says it plays: a premade one by id, or (signed-in players only)
+ * their own, checked field by field. Anything else gets the default.
+ * @param {Conn} c @param {unknown} x
+ */
+function strategyFor(c, x) {
+  const L = /** @type {GameLibs} */ (LIBS);
+  if (typeof x === 'string') return L.strategies.strategyById(x);
+  if (c.user && x && typeof x === 'object') return L.strategies.cleanStrategy(x) || L.strategies.strategyById(undefined);
+  return L.strategies.strategyById(undefined);
+}
 ready.catch((e) => log.error('loading the game code failed', { err: e }));
 
 // Limits. The environment overrides exist for load tests on a separate test server.
@@ -274,7 +289,7 @@ function upgrade(req, socket, head) {
   if (!ws) return;
   perIp.set(ip, (perIp.get(ip) || 0) + 1);
   /** @type {Conn} */
-  const c = { ws, ip, user: auth.currentUser(req), id: null, name: null, guest: true, room: null, times: [] };
+  const c = { ws, ip, user: auth.currentUser(req), id: null, name: null, guest: true, room: null, times: [], strategy: null };
   conns.add(c);
   const helloTimer = setTimeout(() => { if (!c.id) ws.close(1008, 'Say hello'); }, HELLO_MS);
   ws.on('message', (/** @type {string} */ text) => {
@@ -311,6 +326,7 @@ setInterval(() => {
 
 /** @param {Conn} c @param {Record<string, any>} msg */
 function hello(c, msg) {
+  c.strategy = strategyFor(c, msg.strategy);
   if (c.user) {
     c.id = `u${c.user.id}`;
     c.name = c.user.display_name;
@@ -332,6 +348,9 @@ function hello(c, msg) {
   }
   send(c, { t: 'welcome', you: { id: c.id, name: c.name, guest: c.guest } });
 }
+
+/** Battles only use premade strategies: yours if you play one, otherwise the default. @param {Conn} c */
+const presetOf = (c) => (c.strategy?.preset ? c.strategy.id : 'tcl');
 
 /** @param {unknown} kind @returns {Kind | null} */
 const kindOf = (kind) => (kind === 'battle' || kind === 'table') && GAMES[kind] ? kind : null;
@@ -361,6 +380,11 @@ function onMessage(c, text) {
   const fail = (error) => send(c, { t: 'error', error, ref: msg.ref });
 
   switch (msg.t) {
+    case 'strategy':
+      // Switched strategies: shared tables grade with it from the next round.
+      c.strategy = strategyFor(c, msg.strategy);
+      if (c.room) c.room.changed();
+      return 'strategy';
     case 'lobby':
       if (msg.watch) { lobbyWatchers.add(c); send(c, lobbyView()); } else lobbyWatchers.delete(c);
       return 'lobby';
@@ -370,7 +394,8 @@ function onMessage(c, text) {
       if (rooms.size >= MAX_ROOMS) { fail('The site is full right now. Try again in a few minutes.'); return 'create'; }
       if (createLimit(c.ip)) { fail('You’re making rooms too fast. Wait a minute.'); return 'create'; }
       if (c.room) c.room.remove(id, `${name} left.`);
-      const room = new Room(kind, msg.visibility === 'private' ? 'private' : 'public', msg.settings);
+      const settings = { ...(msg.settings && typeof msg.settings === 'object' ? msg.settings : {}), strategy: presetOf(c) };
+      const room = new Room(kind, msg.visibility === 'private' ? 'private' : 'public', settings);
       room.join(c);
       return 'create';
     }
@@ -388,7 +413,7 @@ function onMessage(c, text) {
       const kind = kindOf(msg.kind);
       if (!kind) { fail('Pick a battle or a table.'); return 'quick'; }
       const open = [...rooms.values()].filter((r) => r.kind === kind && r.visibility === 'public' && !r.full && !r.banned.has(id)
-        && r.connectedMembers().length && (kind === 'table' ? r.game.hasRoom() : !r.game.playing))
+        && r.connectedMembers().length && (kind === 'table' ? r.game.hasRoom() : !r.game.playing && r.game.strategyId === presetOf(c)))
         .sort((a, b) => b.members.size - a.members.size);
       if (open[0]) {
         if (c.room && c.room !== open[0]) c.room.remove(id, `${name} left.`);
@@ -398,7 +423,7 @@ function onMessage(c, text) {
       if (rooms.size >= MAX_ROOMS) { fail('The site is full right now. Try again in a few minutes.'); return 'quick'; }
       if (createLimit(c.ip)) { fail('You’re making rooms too fast. Wait a minute.'); return 'quick'; }
       if (c.room) c.room.remove(id, `${name} left.`);
-      new Room(kind, 'public', {}).join(c);
+      new Room(kind, 'public', { strategy: presetOf(c) }).join(c);
       return 'quick';
     }
     case 'leave':

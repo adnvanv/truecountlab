@@ -1,7 +1,8 @@
 // Single-deck countdown (mode 1).
-import { h, cardEl, sleep, signed, secs, numberField, head, field, select, typingInField } from '../ui.js';
-import { hiLo, makeDecks, shuffleInPlace, randInt } from '../cards.js';
-import { addRun } from '../store.js';
+import { h, cardEl, sleep, signed, secs, numberField, head, field, select, typingInField, strategyTag } from '../ui.js';
+import { makeDecks, shuffleInPlace, randInt } from '../cards.js';
+import { tagOf } from '../strategy.js';
+import { addRun, scoreFor } from '../store.js';
 import { sfx } from '../sfx.js';
 
 // Goal pace: a full deck in under 30s, i.e. about 0.58s per card.
@@ -14,6 +15,8 @@ export function mount(root, ctx) {
   const cfg = ctx.settings.countdown;
   const st = ctx.stats.countdown;
   const since = Date.now(); // this session
+  const strat = ctx.strategy;
+  const hiLo = (c) => tagOf(c, strat); // the strategy's own card values
   let alive = true;
   let runId = 0;
   let phase = 'idle'; // idle | running | answer | result
@@ -48,7 +51,8 @@ export function mount(root, ctx) {
     startBtn);
 
   root.append(h('section', { class: 'view' },
-    head('Countdown', 'Cards flip from a fresh deck — a random 15–20 by default — then you enter the Hi-Lo running count. The stop point is random, so you can’t guess the answer.'),
+    head('Countdown', `Cards flip from a fresh deck — a random 15–20 by default — then you enter the ${strat.count.name} running count (starting from 0). The stop point is random, so you can’t guess the answer.`),
+    strategyTag(strat),
     toolbar,
     h('div', { class: 'timer-row' }, clock, prog, goal),
     h('div', { class: 'stage-wrap' }, h('div', { class: 'stage-box' }, stage)),
@@ -122,6 +126,7 @@ export function mount(root, ctx) {
     phase = 'result';
     const expected = cards.reduce((s, c) => s + hiLo(c), 0);
     const ok = guess === expected;
+    scoreFor('counts', ok);
     const perCard = elapsed / cards.length;
     const goalMet = ok && perCard <= GOAL_PER_CARD;
     if (goalMet) sfx.win(); else if (ok) sfx.right(); else sfx.wrong();

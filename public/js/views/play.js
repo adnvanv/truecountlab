@@ -17,6 +17,7 @@ const BOARDS = [
   ['tableChecks', 'Count checks', (v) => `${v}%`, (n) => `${n} checks`],
 ];
 const muted = new Set(); // players you've muted, for this visit
+let tableBuyIn = 500; // the buy-in for a shared table you open (the host picks)
 
 const roomFromHash = () => (new URLSearchParams(location.hash.split('?')[1] || '').get('room') || '').toUpperCase();
 const setHash = (code) => history.replaceState(null, '', code ? `#play?room=${code}` : '#play');
@@ -58,13 +59,16 @@ export function mount(root, ctx) {
     const statusText = st === 'ready' ? `${lobby.online} online now` : st === 'needName' ? online.error() : st === 'connecting' ? 'Connecting…' : 'Offline. Reconnecting…';
     const codeInput = h('input', { class: 'text-input code', placeholder: 'ABC123', maxlength: 6, autocomplete: 'off', 'aria-label': 'Room code' });
     const ready = st === 'ready';
-    const settingsFor = () => ({ rounds: 9, types: ['rc', 'play'] });
+    const settingsFor = (kind) => (kind === 'table' ? { buyIn: tableBuyIn } : { rounds: 9, types: ['rc', 'play'] });
+    const buyInPick = h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Buy-in for a table you open'),
+      h('select', { onchange: (e) => { tableBuyIn = Number(e.target.value); } },
+        [100, 250, 500, 1000, 2500, 5000].map((v) => h('option', { value: v, selected: v === tableBuyIn }, `$${v.toLocaleString()}`))));
     const card = (kind, title, desc) => h('div', { class: 'panel ol-card' },
-      h('h2', {}, title), h('p', { class: 'muted' }, desc),
+      h('h2', {}, title), h('p', { class: 'muted' }, desc), kind === 'table' ? buyInPick : null,
       h('div', { class: 'row' },
         h('button', { class: 'btn primary', disabled: !ready, onclick: () => online.send({ t: 'quick', kind }) }, kind === 'battle' ? 'Quick battle' : 'Join a table'),
-        h('button', { class: 'btn', disabled: !ready, onclick: () => online.send({ t: 'create', kind, visibility: 'private', settings: settingsFor() }) }, 'Private room'),
-        h('button', { class: 'btn ghost', disabled: !ready, onclick: () => online.send({ t: 'create', kind, visibility: 'public', settings: settingsFor() }) }, 'New public room')));
+        h('button', { class: 'btn', disabled: !ready, onclick: () => online.send({ t: 'create', kind, visibility: 'private', settings: settingsFor(kind) }) }, 'Private room'),
+        h('button', { class: 'btn ghost', disabled: !ready, onclick: () => online.send({ t: 'create', kind, visibility: 'public', settings: settingsFor(kind) }) }, 'New public room')));
 
     const list = lobby.rooms.length
       ? h('table', { class: 'ol-rooms' }, h('tbody', {}, lobby.rooms.map((r) => h('tr', {},
@@ -81,7 +85,7 @@ export function mount(root, ctx) {
       h('div', { class: 'panel ol-status' }, who, h('div', { class: `ol-online ${st === 'ready' ? 'good' : st === 'needName' ? 'bad' : 'muted'}` }, statusText)),
       h('div', { class: 'ol-cards' },
         card('battle', 'Count battle', 'Up to 8 players get the same question at the same time: running counts and hands to play at a given true count. Right and fast wins.'),
-        card('table', 'Shared table', 'Up to 5 players at one 6-deck shoe with $500 in table chips. Your bets, plays and count checks are graded privately.')),
+        card('table', 'Shared table', 'Up to 5 players at one 6-deck shoe. The host picks the buy-in. Your bets, plays and count checks are graded privately, on your own strategy.')),
       h('form', {
         class: 'panel ol-code',
         onsubmit: (e) => { e.preventDefault(); const c = codeInput.value.trim().toUpperCase(); if (c) online.join(c); },

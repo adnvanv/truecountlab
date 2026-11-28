@@ -40,6 +40,7 @@ const ctx = {
   get settings() { return state.settings; },
   get stats() { return state.stats; },
   get state() { return state; },
+  get strategy() { return store.activeStrategy(); },
   save: store.save,
   resetStats: store.resetStats,
 };

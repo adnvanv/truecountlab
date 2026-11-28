@@ -1,8 +1,8 @@
 // Basic strategy trainer (mode 4) with a mistake heatmap.
-import { h, cardEl, head, field, select, toggle, typingInField, secs } from '../ui.js';
+import { h, cardEl, head, toggle, typingInField, secs, strategyTag } from '../ui.js';
 import { randInt, pick, makeCard, cardForValue, TENS } from '../cards.js';
-import { basicStrategy, cellOf, cellKey, handLabel, upLabel, UPCARDS, ACTIONS, CODE_TEXT, HARD, SOFT, PAIRS } from '../strategy.js';
-import { addRun } from '../store.js';
+import { basicStrategy, cellOf, cellKey, handLabel, upLabel, UPCARDS, ACTIONS, CODE_TEXT, DEFAULT_STRATEGY } from '../strategy.js';
+import { addRun, scoreFor } from '../store.js';
 import { sfx } from '../sfx.js';
 
 const HARD_ROWS = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17'];
@@ -12,7 +12,7 @@ const COLS = UPCARDS.map(upLabel);
 
 const rowLabel = (group, r) => (group === 'hard' ? (r === '8' ? '5–8' : r === '17' ? '17+' : r)
   : group === 'soft' ? `A,${Number(r) - 11}` : r === 'T' ? '10,10' : `${r},${r}`);
-const chartCode = (group, r, ci) => (group === 'hard' ? HARD[r][ci] : group === 'soft' ? SOFT[r][ci] : PAIRS[r][ci]);
+const chartCode = (chart, group, r, ci) => (group === 'hard' ? chart.hard[r][ci] : group === 'soft' ? chart.soft[r][ci] : chart.pairs[r][ci]);
 
 export const ALL_CELLS = [
   ...HARD_ROWS.flatMap((r) => COLS.map((c) => ({ group: 'hard', row: r, col: c }))),
@@ -20,7 +20,8 @@ export const ALL_CELLS = [
   ...PAIR_ROWS.flatMap((r) => COLS.map((c) => ({ group: 'pair', row: r, col: c }))),
 ];
 
-export function heatmapEl(cells) {
+/** @param {Record<string, { n: number, miss: number }>} cells @param {import('../strategy.js').Strategy} [strat] */
+export function heatmapEl(cells, strat = DEFAULT_STRATEGY) {
   const grid = (title, group, rows) => h('div', { class: 'heat-block' },
     h('h3', {}, title),
     h('div', { class: 'chart-scroll' }, h('table', { class: 'chart heat' },
@@ -29,7 +30,7 @@ export function heatmapEl(cells) {
         h('th', {}, rowLabel(group, r)),
         COLS.map((c, ci) => {
           const d = cells[`${group}:${r}:${c}`];
-          const code = chartCode(group, r, ci);
+          const code = chartCode(strat.chart, group, r, ci);
           if (!d || !d.n) return h('td', { class: 'none', title: 'Not tried yet' }, code);
           const rate = d.miss / d.n;
           const bg = d.miss ? `hsl(${Math.round(40 - 40 * Math.min(1, rate * 2))} 85% ${Math.round(62 - 18 * Math.min(1, rate * 2))}%)` : 'hsl(145 45% 42%)';
@@ -70,6 +71,7 @@ function handForCell(c) {
 export function mount(root, ctx) {
   const cfg = ctx.settings.basic;
   const st = ctx.stats.basic;
+  const strat = ctx.strategy;
   const since = Date.now(); // this session
   let sc = null;
   let answered = false;
@@ -82,7 +84,8 @@ export function mount(root, ctx) {
   const heat = h('div');
 
   root.append(h('section', { class: 'view' },
-    head('Basic Strategy Trainer', 'Random hands against a dealer upcard: 6 decks, S17, double after split, no surrender. The heatmap shows where your mistakes are.'),
+    head('Basic Strategy Trainer', 'Random hands against a dealer upcard: 6 decks, S17, double after split, no surrender. The heatmap shows where your mistakes are this session.'),
+    strategyTag(strat),
     h('div', { class: 'panel toolbar' },
       toggle(cfg, 'focus', 'Focus on my mistakes', () => ctx.save()),
       toggle(cfg, 'auto', 'Auto-advance when correct', () => ctx.save())),
@@ -118,8 +121,9 @@ export function mount(root, ctx) {
     if (answered) return;
     answered = true;
     const o = { canDouble: true, canSplit: true };
-    const b = basicStrategy(sc.cards, sc.up, o);
+    const b = basicStrategy(sc.cards, sc.up, o, strat);
     const ok = a === b.action;
+    scoreFor('plays', ok);
     if (ok) sfx.right(); else sfx.wrong();
     const cell = cellOf(sc.cards, sc.up);
     const key = cellKey(cell);
@@ -161,7 +165,7 @@ export function mount(root, ctx) {
       h('span', {}, `Streak ${streak}`),
       h('span', {}, `This session: ${runs.length ? Math.round((100 * runs.filter((r) => r.ok).length) / runs.length) : 0}% (${runs.length})`),
       ...(runs.length > 50 ? [h('span', {}, `Last 50: ${Math.round((100 * last50.filter((r) => r.ok).length) / last50.length)}%`)] : []));
-    heat.replaceChildren(heatmapEl(cells));
+    heat.replaceChildren(heatmapEl(cells, strat));
   }
 
   function onKey(e) {

@@ -170,3 +170,7 @@ export function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
 }
+
+/** The strategy a mode grades against, linking to where it can be changed. @param {{ name: string, count: { name: string } }} strat */
+export const strategyTag = (strat) => h('a', { class: 'strat-tag', href: '#chart', title: 'Everything here is graded against this strategy. Change it on the Strategy page.' },
+  h('span', { class: 'muted' }, 'Strategy'), h('strong', {}, strat.name), h('span', { class: 'muted' }, `· ${strat.count.name}`));

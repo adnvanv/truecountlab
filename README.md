@@ -92,6 +92,25 @@ Run it against a test server started with raised limits (`LIVE_MAX_PER_IP`, `LIV
 - **Rooms:** quick play, private rooms by code or invite link, host controls, and room chat (masked, rate-limited, never saved).
 - **Leaderboards** for signed-in players: battle Elo, wins (outright first only), battle accuracy, and table play and count-check accuracy.
 
+## Strategies
+Every mode grades against the player's strategy: its chart, count, index plays, insurance and bet ramp. Guests use the default; accounts can pick a premade one or build their own.
+
+| Strategy | Count | Index plays | Edge, flat bets | Edge, with its ramp |
+|---|---|---|---|---|
+| TrueCountLab (default) | Hi-Lo | the 22 above, $25–$75 ramp | −0.34% | +0.04% |
+| Basic strategy only | Hi-Lo (for count checks) | none, flat bets | −0.44% | — |
+| Hi-Lo Illustrious 18 | Hi-Lo | Illustrious 18 + Fab 4 (as published) | −0.32% | +0.54% |
+| KO | KO, unbalanced (IRC −20) | computed, running count | −0.36% | +0.43% |
+| Hi-Opt II | Hi-Opt II | computed | −0.32% | +0.60% |
+| Omega II | Omega II | computed | −0.35% | +0.52% |
+
+- **Custom strategies:** copy any strategy, then tap chart cells to change plays, set any card's count value (−3 to +3), edit, add or remove index plays, and shape the bet ramp (up to $200). A count that doesn't balance over a deck becomes a running-count system with a KO-style starting count. The server re-checks a custom strategy field by field before grading with it (`cleanStrategy` in `public/js/strategies.js`).
+- **Edges** come from `public/js/sim.js`, a Monte Carlo of whole shoes played exactly as the strategy says (about 5 million hands a second). Basic strategy alone lands on the usual −0.4% to −0.45% for these rules. The editor runs it in a worker as you edit; premade edges are 40 million hands each, from `scripts/build-presets.mjs`.
+- **Computed indexes:** `scripts/compute-indexes.mjs` derives each count's index plays from first principles: it deals random shoes to random depths, works out the EV of both plays against what's left, and picks the index that wins the most. On Hi-Lo it matches the published Illustrious 18 and Fab 4 exactly on 17 of 24 plays and within one point on the rest, so the KO, Hi-Opt II and Omega II numbers it produces are labelled as computed, not the books'.
+- **Ramps** for the premade counting strategies step up where that count's edge reaches +0.5%, +1%, +1.5% and +2% (2, 4, 6 and 8 units). For Hi-Lo that lands on the classic +2/+3/+4/+5.
+- **Online:** count battles use one premade strategy per room (the host picks; quick play matches yours). Shared tables grade each seat on its own strategy, counting the same cards in each player's count. Only premade strategies count toward the leaderboards, since a custom one could make anything "right".
+- **Accuracy per strategy:** every graded play and count answer is also tallied by strategy and shown on the Strategy page.
+
 ## Learn guides
 Static, crawlable pages at [`/learn`](https://truecountlab.com/learn): how to count cards (Hi-Lo), the true count, a basic strategy chart and index plays. Each one links into the drill for that skill.
 - The trainer itself lives behind `#` routes, which search engines don't index, so these pages carry the site's searchable content. Each has its own title, description, canonical URL, Open Graph tags and schema.org data (Article, BreadcrumbList, Course, FAQPage). `robots.txt` and `sitemap.xml` are in `public/`.
@@ -164,7 +183,7 @@ Vanilla JS with ES modules: no build step, and no runtime dependencies. `HOST` a
 
 ```
 npm ci --prefix tools && npm run typecheck --prefix tools      # tsc --checkJs (dev-only tooling)
-node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 49 game-rules tests, stacked shoes
+node --disable-warning=ExperimentalWarning scripts/test-games.mjs   # 58 game-rules tests, stacked shoes
 node scripts/test-live.mjs                                     # 58 end-to-end tests against a throwaway server
 node scripts/check-null-text.js                                # no "null" printed as page text
 node scripts/learn-tables.mjs --check                          # guide tables match strategy.js

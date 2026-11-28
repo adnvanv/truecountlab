@@ -1,8 +1,8 @@
 // Deviation trainer (mode 5): a hand plus a true count — basic play, the deviation, or wrong?
-import { h, cardEl, signed, secs, head, field, select, toggle, typingInField, pct } from '../ui.js';
+import { h, cardEl, signed, secs, head, field, select, toggle, typingInField, pct, strategyTag } from '../ui.js';
 import { randInt, pick, makeCard, cardForValue, TENS } from '../cards.js';
-import { activeDevs, basicStrategy, correctAction, insuranceCorrect, devNote, ACTIONS, DEV_GROUPS, handLabel } from '../strategy.js';
-import { addRun } from '../store.js';
+import { activeDevs, basicStrategy, correctAction, insuranceCorrect, devNote, indexName, ACTIONS, DEV_GROUPS, handLabel } from '../strategy.js';
+import { addRun, scoreFor } from '../store.js';
 import { sfx } from '../sfx.js';
 
 export const DEV_ERRORS = {
@@ -41,7 +41,10 @@ export function mount(root, ctx) {
   const cfg = S.deviation;
   const st = ctx.stats.deviation;
   const since = Date.now(); // this session
-  const devs = activeDevs(S.surrender);
+  const strat = ctx.strategy;
+  const devs = activeDevs(S.surrender, strat);
+  const idxName = indexName(strat);
+  const idxLong = idxName === 'RC' ? 'Running count' : 'True count';
   let sc = null;
   let answered = false;
   let autoTimer = null;
@@ -53,7 +56,8 @@ export function mount(root, ctx) {
   const table = h('div');
 
   root.append(h('section', { class: 'view' },
-    head('Deviation Trainer', `Each hand shows its true count. Decide whether basic strategy holds or the count deviation applies. ${devs.length} deviations${S.surrender ? ' (including surrender)' : ''}. Surrender can be turned on in Settings.`),
+    head('Deviation Trainer', `Each hand shows its ${idxLong.toLowerCase()}. Decide whether basic strategy holds or the count deviation applies. ${devs.length} deviations${S.surrender ? ' (including surrender)' : ''}. Surrender can be turned on in Settings.`),
+    strategyTag(strat),
     h('div', { class: 'panel toolbar' },
       field('Drill', select([
         ['mixed', 'Mixed counts (index ±3)'],
@@ -66,21 +70,26 @@ export function mount(root, ctx) {
 
   function next() {
     clearTimeout(autoTimer);
+    if (!devs.length) {
+      stage.replaceChildren(h('div', { class: 'strat-q' }, `${strat.name} has no index plays, so there's nothing to drill here.`, h('a', { class: 'btn sm', href: '#chart' }, 'Pick a counting strategy')));
+      return;
+    }
     const d = cfg.focus ? weightedPick(devs, weightsFor(devs, st.runs)) : pick(devs);
     const offset = cfg.mode === 'threshold' ? pick([-1, 0, 0, 1]) : randInt(7) - 3;
     const tc = d.tc + offset;
-    const cards = d.kind === 'ins' ? hardCards(5 + randInt(15)) : hardCards(d.total);
+    const tens = () => makeCard(pick(TENS));
+    const cards = d.kind === 'ins' ? hardCards(5 + randInt(15)) : d.pair ? (d.pair === 'T' ? [tens(), tens()] : [makeCard(d.pair), makeCard(d.pair)]) : hardCards(d.total);
     const upCard = d.up === 10 ? makeCard(pick(TENS)) : cardForValue(d.up);
     sc = { d, tc, cards, up: d.up, upCard, t: performance.now() };
     answered = false;
     result.replaceChildren();
     stage.replaceChildren(
       h('div', { class: 'strat-hand' }, h('div', { class: 'k' }, 'Dealer'), h('div', { class: 'hand' }, cardEl(upCard))),
-      h('div', { class: 'strat-q' }, h('div', { class: 'tc-pill mono big-pill' }, `True count ${signed(tc)}`), d.kind === 'ins' ? h('div', {}, 'Dealer offers insurance.') : null),
+      h('div', { class: 'strat-q' }, h('div', { class: 'tc-pill mono big-pill' }, `${idxLong} ${signed(tc)}`), d.kind === 'ins' ? h('div', {}, 'Dealer offers insurance.') : null),
       h('div', { class: 'strat-hand' }, h('div', { class: 'k' }, `You · ${handLabel(cards)}`), h('div', { class: 'hand' }, cards.map((c) => cardEl(c)))));
     const acts = d.kind === 'ins'
       ? [['Y', 'Insure'], ['N', 'No insurance']]
-      : ['H', 'S', 'D'].concat(S.surrender ? ['R'] : []).map((a) => [a, ACTIONS[a]]);
+      : ['H', 'S', 'D'].concat(d.pair ? ['P'] : [], S.surrender ? ['R'] : []).map((a) => [a, ACTIONS[a]]);
     buttons.replaceChildren(...acts.map(([k, label]) => h('button', { class: `btn act act-${k}`, 'data-k': k, onclick: () => answer(k) }, h('span', {}, label), h('kbd', {}, k))));
   }
 
@@ -91,14 +100,15 @@ export function mount(root, ctx) {
     let want;
     let basic;
     if (d.kind === 'ins') {
-      want = insuranceCorrect(tc) ? 'Y' : 'N';
+      want = insuranceCorrect(tc, strat) ? 'Y' : 'N';
       basic = 'N';
     } else {
-      const o = { canDouble: true, canSplit: false, canSurrender: S.surrender };
-      want = correctAction(sc.cards, sc.up, o, tc).action;
-      basic = basicStrategy(sc.cards, sc.up, o).action;
+      const o = { canDouble: true, canSplit: Boolean(d.pair), canSurrender: S.surrender };
+      want = correctAction(sc.cards, sc.up, o, tc, strat).action;
+      basic = basicStrategy(sc.cards, sc.up, o, strat).action;
     }
     const ok = a === want;
+    scoreFor('plays', ok);
     if (ok) sfx.right(); else sfx.wrong();
     // The deviation play is whichever side differs from basic (for low-count hits, that's the hit).
     const devPlay = d.at !== basic ? d.at : d.below;
@@ -113,14 +123,14 @@ export function mount(root, ctx) {
       if (!ok && btn.dataset.k === a) btn.classList.add('wrong');
     }
     const wantKind = want === basic ? 'basic strategy' : 'the deviation';
-    const side = tc >= d.tc ? `TC ${signed(tc)} is at or above ${signed(d.tc)}` : `TC ${signed(tc)} is below ${signed(d.tc)}`;
+    const side = tc >= d.tc ? `${idxName} ${signed(tc)} is at or above ${signed(d.tc)}` : `${idxName} ${signed(tc)} is below ${signed(d.tc)}`;
     result.replaceChildren(
       h('div', { class: `verdict ${ok ? 'good' : 'bad'}` },
         ok ? `✓ ${ACTIONS[want]}` : `✗ Correct play: ${ACTIONS[want]}`, h('span', { class: 'muted' }, ` · ${secs(ms)}`)),
       h('div', { class: 'picked' },
         h('span', { class: `pill ${picked}` }, `You picked ${PICKED[picked]}`),
         h('span', { class: 'muted' }, ` — the right answer was ${wantKind} (${ACTIONS[want]}).`)),
-      h('div', { class: 'muted' }, `${devNote(d)}. ${side}.`),
+      h('div', { class: 'muted' }, `${devNote(d, strat)}. ${side}.`),
       h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: next }, 'Next', h('kbd', {}, 'Enter'))));
     renderRecord();
     if (ok && cfg.auto) autoTimer = setTimeout(next, 900);

@@ -16,6 +16,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
 const C = await import(pathToFileURL(`${ROOT}public/js/cards.js`).href);
 const S = await import(pathToFileURL(`${ROOT}public/js/strategy.js`).href);
+const P = await import(pathToFileURL(`${ROOT}public/js/strategies.js`).href);
 const savedBattles = [];
 const tableStats = [];
 const bumps = {};
@@ -24,8 +25,8 @@ const fakeRecords = {
   addTableStats: (userId, d) => tableStats.push({ userId, ...d }),
   bump: (key, n = 1) => { bumps[key] = (bumps[key] || 0) + n; },
 };
-const Table = require(`${ROOT}server/games/table.js`)({ cards: C, strategy: S }, fakeRecords);
-const Battle = require(`${ROOT}server/games/battle.js`)({ cards: C, strategy: S }, fakeRecords);
+const Table = require(`${ROOT}server/games/table.js`)({ cards: C, strategy: S, strategies: P }, fakeRecords);
+const Battle = require(`${ROOT}server/games/battle.js`)({ cards: C, strategy: S, strategies: P }, fakeRecords);
 
 let pass = 0; let fail = 0;
 const ok = (cond, name, extra = '') => { if (cond) { pass++; console.log('  ✓', name); } else { fail++; console.log('  ✗', name, extra); } };
@@ -415,6 +416,39 @@ try {
     }
     const saved = savedBattles.at(-1);
     ok(b.final[0].id === 'p1' && b.final[0].correct === 6 && saved.length === 2 && saved.every((x) => x.rounds === 6), 'final standings and saved results');
+  }
+
+  console.log('Strategies');
+  {
+    const { simulate, edgeOf } = await import(pathToFileURL(`${ROOT}public/js/sim.js`).href);
+    const custom = P.newCustom(P.PRESETS[0], 'Sevens count');
+    custom.count.values['7'] = 1; // unbalanced now: a full deck adds +4
+    const clean = P.cleanStrategy(custom);
+    ok(clean && clean.count.kind === 'running' && clean.count.irc === -20, 'a custom count with 7s at +1 becomes an unbalanced running count starting at −20', JSON.stringify(clean?.count));
+    ok(P.cleanStrategy({ ...custom, count: { values: { ...custom.count.values, 2: 9 } } }) === null, 'out-of-range count values are refused');
+    ok(P.cleanStrategy({ ...custom, devs: [{ kind: 'play', total: 16, up: 10, tc: 0, at: 'X', below: 'H' }] }) === null, 'unknown plays are refused');
+    ok(P.cleanStrategy({ ...custom, id: 'tcl' }) === null, 'a custom strategy can’t pose as a preset');
+    // Shared table: each seat is graded on its own strategy's count.
+    const room = fakeRoom();
+    const t = new Table(room, { buyIn: 1000 });
+    const a = room.add('p1'); const b = room.add('p2');
+    a.conn = { strategy: clean }; b.conn = { strategy: P.PRESETS[0] };
+    t.sit(a, 0); t.sit(b, 1);
+    for (const r of ['7', '7', '5', 'K']) t.saw({ rank: r, suit: '♠' });
+    ok(t.rcOf(t.seats[0]) === -20 + 2 && t.rcOf(t.seats[1]) === 0, 'two seats, two running counts from the same cards', `${t.rcOf(t.seats[0])} / ${t.rcOf(t.seats[1])}`);
+    ok(t.seats[0].stack === 1000 && t.summary().startsWith('$1000 buy-in'), 'the host’s buy-in sets the table chips');
+    t.dead = true;
+    // Battles play one premade strategy: KO counts 7s.
+    const br = fakeRoom(); br.add('p1');
+    const ko = new Battle(br, { rounds: 6, types: ['rc'], strategy: 'ko' });
+    ko.start();
+    const koTag = (c) => P.PRESETS.find((x) => x.id === 'ko').count.values[C.rankKey(c.rank)];
+    ok(ko.rounds.every((r) => r.answer === r.cards.reduce((x, c) => x + koTag(c), 0)) && ko.summary().startsWith('KO'), 'a KO battle grades the KO count');
+    ko.destroy();
+    ok(new Battle(fakeRoom(), { strategy: 'c_custom1' }).strategyId === 'tcl', 'battles only take premade strategies');
+    // The edge simulator: basic strategy for these rules is a house edge of about 0.4–0.5%.
+    const e = edgeOf(simulate({ ...P.PRESETS[1] }, { rounds: 1_500_000 }));
+    ok(e.flat < -0.2 && e.flat > -0.7, `basic strategy simulates to a ${e.flat.toFixed(2)}% edge (±${e.flatSE.toFixed(2)})`);
   }
 
   console.log('Ratings');

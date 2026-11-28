@@ -7,7 +7,7 @@ import * as online from '../online.js';
 
 const TYPE_NAME = { rc: 'Running count', play: 'Play the hand' };
 const TYPE_HELP = {
-  rc: 'Cards flash by. Keep the Hi-Lo count, then type it.',
+  rc: 'Cards flash by. Keep the room’s count (from 0), then type it.',
   play: 'Pick the right play at this true count, deviations included.',
 };
 const ACTS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
@@ -108,7 +108,7 @@ export function battleUI() {
       parts.push(h('div', { class: 'b-hand' },
         h('div', {}, h('div', { class: 'zone-label' }, 'Dealer'), h('div', { class: 'hand' }, cardEl(r.up))),
         h('div', {}, h('div', { class: 'zone-label' }, 'You'), h('div', { class: 'hand' }, r.cards.map((c) => cardEl(c)))),
-        h('div', { class: 'tc-pill big-pill' }, `TC ${signed(r.tc)}`)));
+        h('div', { class: 'tc-pill big-pill' }, `${r.idx || 'TC'} ${signed(r.tc)}`)));
     }
     if (g.phase === 'answer') parts.push(h('p', { class: 'muted b-help' }, TYPE_HELP[r.type]));
     if (g.phase === 'reveal') parts.push(revealView());
@@ -135,6 +135,9 @@ export function battleUI() {
     const n = room.members.filter((m) => m.connected).length;
     const settings = host
       ? h('div', { class: 'b-settings' },
+        h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Strategy'),
+          h('select', { onchange: (e) => online.game('settings', { settings: { ...g.settings, strategy: e.target.value } }) },
+            (g.strategies || []).map((x) => h('option', { value: x.id, selected: x.id === g.settings.strategy }, x.name)))),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Rounds'),
           h('select', { onchange: (e) => online.game('settings', { settings: { ...g.settings, rounds: Number(e.target.value) } }) },
             g.roundCounts.map((c) => h('option', { value: c, selected: c === g.settings.rounds }, String(c))))),
@@ -148,9 +151,9 @@ export function battleUI() {
                 online.game('settings', { settings: { ...g.settings, types: next } });
               },
             }), label)))))
-      : h('p', { class: 'muted' }, `${g.settings.rounds} rounds: ${g.settings.types.map((t) => TYPE_NAME[t].toLowerCase()).join(', ')}.`);
+      : h('p', { class: 'muted' }, `${g.strategyName || 'TrueCountLab'} strategy · ${g.settings.rounds} rounds: ${g.settings.types.map((t) => TYPE_NAME[t].toLowerCase()).join(', ')}.`);
     return h('div', { class: 'b-wait' },
-      h('p', {}, 'Everyone gets the same question at the same moment. Right answers score 100 points, plus up to 100 more the faster you answer. Wrong or no answer scores 0.'),
+      h('p', {}, `Everyone gets the same question at the same moment and plays the same strategy (${g.strategyName || 'TrueCountLab'}). Right answers score 100 points, plus up to 100 more the faster you answer. Wrong or no answer scores 0.`),
       settings,
       h('div', { class: 'row' },
         host ? h('button', { class: 'btn primary', onclick: () => online.game('start') }, n > 1 ? `Start battle (${n} players)` : 'Start (just you)') : h('span', { class: 'muted' }, 'Waiting for the host to start.'),

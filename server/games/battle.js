@@ -1,6 +1,7 @@
 // Count battle: everyone gets the same question at the same moment and races to answer.
 // Rounds: running count (cards flash by, then type the count) and play the hand (a hand,
-// an upcard and a true count).
+// an upcard and a true count). Everyone in a room plays the same premade strategy (the
+// host picks it), so everyone's right answer is the same.
 // Right answers score 100 plus up to 100 for speed. The server holds the answers and
 // the clock; browsers only ever see what's on screen right now.
 'use strict';
@@ -35,10 +36,10 @@
  * @property {number} score @property {number} correct
  * @property {{ value: Answer | null, ok: boolean, points: number, ms: number | null }[]} answers one per round so far
  */
-/** @typedef {{ rounds: number, types: RoundType[] }} Settings */
+/** @typedef {{ rounds: number, types: RoundType[], strategy: string }} Settings */
 
 /** @param {GameLibs} libs @param {Records} records */
-module.exports = ({ cards: C, strategy: S }, records) => {
+module.exports = ({ cards: C, strategy: S, strategies: P }, records) => {
   const SCALE = Number(process.env.LIVE_TIME_SCALE) || 1; // tests run the clock faster
   /** @param {number} n */
   const ms = (n) => Math.round(n * SCALE);
@@ -58,6 +59,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     return {
       rounds: ROUND_COUNTS.includes(Number(s?.rounds)) ? Number(s.rounds) : 9,
       types: types.length ? types : TYPES.slice(),
+      strategy: P.PRESETS.some((x) => x.id === s?.strategy) ? String(s.strategy) : P.DEFAULT_ID,
     };
   }
 
@@ -76,17 +78,17 @@ module.exports = ({ cards: C, strategy: S }, records) => {
 
   /**
    * k counts rounds of this type so far; each one is a little harder.
-   * @param {RoundType} type @param {number} k
+   * @param {RoundType} type @param {number} k @param {import('../types').Strat} strat
    * @returns {Round}
    */
-  function makeRound(type, k) {
+  function makeRound(type, k, strat) {
     const answers = new Map();
     if (type === 'rc') {
       const n = Math.min(24, 10 + 3 * k);
       const pace = Math.max(320, 760 - 90 * k);
       const cards = C.shuffleInPlace(C.makeDecks(1)).slice(0, n).map(plain);
-      const answer = cards.reduce((s, c) => s + C.hiLo(c), 0);
-      return { type, cards, pace, answer, answers, explain: `${n} cards, running count ${answer > 0 ? '+' : ''}${answer}` };
+      const answer = cards.reduce((s, c) => s + S.tagOf(c, strat), 0);
+      return { type, cards, pace, answer, answers, explain: `${n} cards, ${strat.count.name} running count ${answer > 0 ? '+' : ''}${answer}` };
     }
     // Play the hand: mostly hands near a deviation index, some plain basic strategy.
     /** @type {Card[]} */
@@ -95,9 +97,10 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     let up;
     /** @type {number} */
     let tc;
-    if (C.chance(0.65)) {
-      const d = C.pick(S.DEVS.filter((x) => x.kind === 'play'));
-      cards = hardCards(Number(d.total));
+    const devs = strat.devs.filter((x) => x.kind === 'play');
+    if (devs.length && C.chance(0.65)) {
+      const d = C.pick(devs);
+      cards = d.pair ? [C.cardForValue(d.pair === 'A' ? 11 : d.pair === 'T' ? 10 : Number(d.pair)), C.cardForValue(d.pair === 'A' ? 11 : d.pair === 'T' ? 10 : Number(d.pair))] : hardCards(Number(d.total));
       up = d.up;
       tc = d.tc + C.pick([-2, -1, 0, 0, 1, 2]);
     } else {
@@ -108,10 +111,10 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       tc = C.randInt(9) - 4;
     }
     const o = { canDouble: true, canSplit: S.isPair(cards), canSurrender: false };
-    const res = S.correctAction(cards, up, o, tc);
+    const res = S.correctAction(cards, up, o, tc, strat);
     return {
       type, cards: cards.map(plain), up: plain(C.cardForValue(up)), tc, canSplit: o.canSplit, answers,
-      answer: res.action, explain: res.dev ? S.devNote(res.dev) : 'Basic strategy',
+      answer: res.action, explain: res.dev ? S.devNote(res.dev, strat) : 'Basic strategy',
     };
   }
 
@@ -143,12 +146,15 @@ module.exports = ({ cards: C, strategy: S }, records) => {
     }
 
     get capacity() { return MAX_PLAYERS; }
+    /** The premade strategy this room plays (quick play matches on it). */
+    get strategyId() { return this.settings.strategy; }
+    get strat() { return P.strategyById(this.settings.strategy); }
     get playing() { return !['waiting', 'final'].includes(this.phase); }
     /** @returns {'playing' | 'waiting'} */
     status() { return this.playing ? 'playing' : 'waiting'; }
     seatCount() { return this.players.size; }
     hasRoom() { return !this.playing && this.room.members.size < MAX_PLAYERS; }
-    summary() { return `${this.settings.rounds} rounds · ${this.settings.types.map((t) => ({ rc: 'running count', play: 'play the hand' })[t]).join(', ')}`; }
+    summary() { return `${this.strat.name} · ${this.settings.rounds} rounds · ${this.settings.types.map((t) => ({ rc: 'running count', play: 'play the hand' })[t]).join(', ')}`; }
 
     /** Run fn after delay ms, replacing whatever was scheduled. @param {number} delay @param {() => void} fn */
     after(delay, fn) {
@@ -205,7 +211,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
       this.rounds = Array.from({ length: this.settings.rounds }, (_, i) => {
         const type = this.settings.types[i % this.settings.types.length];
         seen[type] = (seen[type] || 0) + 1;
-        return makeRound(type, Number(seen[type]) - 1);
+        return makeRound(type, Number(seen[type]) - 1, this.strat);
       });
       this.i = -1;
       this.final = null;
@@ -340,7 +346,7 @@ module.exports = ({ cards: C, strategy: S }, records) => {
           q.pace = ms(Number(r.pace));
           if (this.phase === 'show') { q.index = this.cardIndex; q.card = cards[this.cardIndex]; }
         } else {
-          q.cards = r.cards; q.up = r.up; q.tc = r.tc; q.canSplit = r.canSplit;
+          q.cards = r.cards; q.up = r.up; q.tc = r.tc; q.canSplit = r.canSplit; q.idx = S.indexName(this.strat);
         }
         if (this.phase === 'reveal') { q.answer = r.answer; q.explain = r.explain; }
         round = q;
@@ -353,6 +359,8 @@ module.exports = ({ cards: C, strategy: S }, records) => {
         phase: this.phase,
         settings: this.settings,
         roundCounts: ROUND_COUNTS,
+        strategies: P.PRESETS.map((x) => ({ id: x.id, name: x.name })),
+        strategyName: this.strat.name,
         autoStartIn: this.autoAt ? Math.max(0, this.autoAt - now) : null,
         deadlineIn: this.deadline ? Math.max(0, this.deadline - now) : null,
         you,

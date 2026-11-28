@@ -1,9 +1,12 @@
-// Full table simulation (mode 7) with sessions: $500 buy-in, stop-loss at the buy-in.
-import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct, shoePopup, SHOE_POPUP_MS } from '../ui.js';
-import { RULES, BETS, betFor, Shoe, hiLo, rankKey, tcFromCards, tcCandidates, decksEstimate } from '../cards.js';
+// Full table simulation with sessions (buy-in, stop-loss at the buy-in), and the training
+// table: the same game with practice chips and a cheat panel. Both grade against the
+// player's strategy: its count, index plays, insurance and bet ramp.
+import { h, cardEl, sleep, signed, trayEl, money, numberField, typingInField, pct, shoePopup, SHOE_POPUP_MS, strategyTag } from '../ui.js';
+import { RULES, Shoe, rankKey, decksEstimate } from '../cards.js';
 import { sfx, configure, shuffleShoe } from '../sfx.js';
 import { tally } from '../tally.js';
-import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS } from '../strategy.js';
+import { handTotal, isBlackjack, correctAction, insuranceCorrect, upValue, handLabel, upLabel, ACTIONS, tagOf, startCount, countIndex, indexCandidates, betAt, rampBets, indexName, devNote } from '../strategy.js';
+import { scoreFor } from '../store.js';
 
 const ABORT = Symbol('abort');
 const MIN = RULES.minBet;
@@ -13,13 +16,18 @@ export function mount(root, ctx, { training = false } = {}) {
   const T = training ? ctx.stats.training : ctx.stats.table;
   const G = ctx.state; // bankroll, session, sessions
   const cheatCfg = S.training;
+  const strat = ctx.strategy;
+  const RC0 = startCount(strat); // 0, or the IRC of an unbalanced count
+  const running = strat.count.kind === 'running';
+  const BETS = rampBets(strat);
+  const BUY_IN = S.money.buyIn;
   let alive = true;
   // Training mode plays with practice chips: no buy-in, no stop-loss, nothing logged.
-  const PRACTICE = 5000;
+  const PRACTICE = S.money.practice;
   const practice = { stack: PRACTICE, buyIn: PRACTICE, hands: 0, peeks: 0 };
 
   const shoe = new Shoe();
-  let rc = 0;
+  let rc = RC0;
   let bet = MIN;
   let phase = 'bet'; // bet | dealing | insurance | play | dealer | check
   let busy = false;
@@ -55,9 +63,9 @@ export function mount(root, ctx, { training = false } = {}) {
   root.append(h('section', { class: `view table-view${training ? ' training' : ''}` },
     training
       ? h('div', { class: 'training-bar' },
-        h('div', {}, h('strong', {}, 'Training table'), h('span', { class: 'muted' }, ' · practice chips, nothing logged · '), rulesText),
+        h('div', {}, h('strong', {}, 'Training table'), h('span', { class: 'muted' }, ' · practice chips, this session only · '), rulesText, ' ', strategyTag(strat)),
         h('button', { class: `btn sm cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat }, cheatCfg.cheat ? 'Cheat: ON' : 'Cheat: OFF', h('kbd', {}, 'X')))
-      : h('div', { class: 'rules-line muted' }, rulesText),
+      : h('div', { class: 'rules-line muted' }, rulesText, ' ', strategyTag(strat)),
     mhud,
     // Desktop: stats, cheat panel and the hand log live in a side column so the table fits one screen.
     h('aside', { class: 'side' }, hud, training ? cheatPanel : null, fb),
@@ -67,7 +75,9 @@ export function mount(root, ctx, { training = false } = {}) {
   // ---- helpers -----------------------------------------------------------
   const sess = () => (training ? practice : G.session);
   const stack = () => sess()?.stack ?? 0;
-  const tc = () => tcFromCards(rc, shoe.remaining);
+  const tc = () => countIndex(rc, shoe.remaining, strat); // the true count, or the running count for unbalanced counts
+  const idxName = indexName(strat);
+  const countText = () => (running ? `RC ${signed(rc)}` : `RC ${signed(rc)} · TC ${signed(tc())}`);
   const takeAnim = (c) => { if (c.anim) { c.anim = false; return true; } return false; };
 
   function count(key, ok) {
@@ -79,6 +89,8 @@ export function mount(root, ctx, { training = false } = {}) {
       o[key] = (o[key] || 0) + 1;
       if (ok) o[pairs[key]] = (o[pairs[key]] || 0) + 1;
     }
+    if (key === 'decisions') scoreFor('plays', ok);
+    if (key === 'checks') scoreFor('counts', ok);
   }
 
   function setBet(v) {
@@ -93,11 +105,11 @@ export function mount(root, ctx, { training = false } = {}) {
   }
 
   function draw(faceDown = false) {
-    if (shoe.remaining === 0) { shoe.shuffle(); rc = 0; announceNewShoe('empty'); note('Shoe ran out mid-round: reshuffled, count reset.', 'warn'); }
+    if (shoe.remaining === 0) { shoe.shuffle(); rc = RC0; announceNewShoe('empty'); note('Shoe ran out mid-round: reshuffled, count reset.', 'warn'); }
     const c = shoe.draw();
     c.anim = true;
     sfx.deal();
-    if (faceDown) c.down = true; else rc += hiLo(c);
+    if (faceDown) c.down = true; else rc += tagOf(c, strat);
     return c;
   }
 
@@ -112,7 +124,7 @@ export function mount(root, ctx, { training = false } = {}) {
   // Returns how long the shuffle takes, so the dealer can wait for it.
   function announceNewShoe(kind) {
     const title = kind === 'empty' ? 'Reshuffled' : 'New shoe';
-    shoePopup(felt, { title, line: kind === 'empty' ? 'Count back to 0' : `Count back to 0 · Bet ${money(MIN)}` });
+    shoePopup(felt, { title, line: kind === 'empty' ? `Count back to ${signed(RC0)}` : `Count back to ${signed(RC0)} · Bet ${money(MIN)}` });
     shuffleShoe();
     return SHOE_POPUP_MS; // deal only once the text is gone
   }
@@ -143,16 +155,18 @@ export function mount(root, ctx, { training = false } = {}) {
   const allowed = (a, o) => a === 'H' || a === 'S' || (a === 'D' && o.canDouble) || (a === 'P' && o.canSplit) || (a === 'R' && o.canSurrender);
   const ACTS = ['H', 'S', 'D', 'P'].concat(S.surrender ? ['R'] : []);
 
+  const insDev = strat.devs.find((d) => d.kind === 'ins');
+  const insRule = insDev ? devNote(insDev, strat).replace('Insurance: ', '') : 'this strategy never takes it';
   // What the cheat panel recommends right now.
   function cheatAdvice() {
     const t = tc();
-    if (phase === 'insurance') return { key: insuranceCorrect(t) ? 'Y' : 'N', text: `${insuranceCorrect(t) ? 'Take' : 'Decline'} insurance (take at TC ≥ +3; TC is ${signed(t)})` };
+    if (phase === 'insurance') return { key: insuranceCorrect(t, strat) ? 'Y' : 'N', text: `${insuranceCorrect(t, strat) ? 'Take' : 'Decline'} insurance (${insRule}; ${idxName} is ${signed(t)})` };
     if (phase === 'play' && hands[active] && dealer.length) {
       const hd = hands[active];
-      const r = correctAction(hd.cards, upValue(dealer[0]), optsFor(hd), t);
+      const r = correctAction(hd.cards, upValue(dealer[0]), optsFor(hd), t, strat);
       return { key: r.action, text: `${ACTIONS[r.action]} — ${r.dev ? r.note : `basic strategy for ${handLabel(hd.cards)} vs ${upLabel(upValue(dealer[0]))}`}` };
     }
-    if (phase === 'bet') return { key: null, text: `Bet ${money(betFor(t))} (TC ${signed(t)})` };
+    if (phase === 'bet') return { key: null, text: `Bet ${money(betAt(t, strat))} (${idxName} ${signed(t)})` };
     return { key: null, text: 'Watch the cards…' };
   }
 
@@ -165,9 +179,10 @@ export function mount(root, ctx, { training = false } = {}) {
     const item = (k, v) => h('div', { class: 'cheat-item' }, h('span', { class: 'k' }, k), h('span', { class: 'v mono' }, v));
     cheatPanel.replaceChildren(
       item('Running count', signed(rc)),
-      item('Decks left', `${(shoe.remaining / 52).toFixed(2)} → ${est}`),
-      item('True count', `${signed(rc)} ÷ ${est} → ${signed(tc())}`),
-      item('Bet', money(betFor(tc()))),
+      ...(running ? [] : [
+        item('Decks left', `${(shoe.remaining / 52).toFixed(2)} → ${est}`),
+        item('True count', `${signed(rc)} ÷ ${est} → ${signed(tc())}`)]),
+      item('Bet', money(betAt(tc(), strat))),
       h('div', { class: 'cheat-item wide' }, h('span', { class: 'k' }, 'Correct play'), h('span', { class: 'v' }, adv.text)));
   }
 
@@ -220,7 +235,7 @@ export function mount(root, ctx, { training = false } = {}) {
         h('div', { class: `stat count${reveal ? ' on' : ''}` },
           h('span', { class: 'k' }, 'Count'),
           h('div', { class: 'count-row' },
-            reveal ? h('span', { class: 'v mono' }, `RC ${signed(rc)} · TC ${signed(tc())}`) : h('span', { class: 'v muted' }, 'Hidden'),
+            reveal ? h('span', { class: 'v mono' }, countText()) : h('span', { class: 'v muted' }, 'Hidden'),
             h('button', { class: 'btn sm ghost', onclick: toggleReveal, title: 'Show or hide the count (C)' }, reveal ? 'Hide' : 'Reveal', h('kbd', {}, 'C'))))),
       soundBtn('btn ghost'));
 
@@ -231,7 +246,7 @@ export function mount(root, ctx, { training = false } = {}) {
         h('span', { class: 'v' }, s ? money(s.stack) : money(G.bankroll)),
         s ? h('span', { class: `m-delta ${s.stack >= s.buyIn ? 'good' : 'bad'}` }, money(s.stack - s.buyIn, { sign: true })) : null),
       h('button', { class: `m-count${showCount ? ' on' : ''}`, onclick: toggleReveal, 'aria-label': 'Show or hide the count' },
-        showCount ? h('span', { class: 'mono' }, `RC ${signed(rc)} · TC ${signed(tc())}`) : h('span', {}, 'Count ••• ', h('small', {}, 'tap'))),
+        showCount ? h('span', { class: 'mono' }, countText()) : h('span', {}, 'Count ••• ', h('small', {}, 'tap'))),
       soundBtn('m-icon'),
       ...(training ? [h('button', { class: `m-icon cheat-btn${cheatCfg.cheat ? ' on' : ''}`, onclick: toggleCheat, 'aria-label': 'Toggle cheat panel' }, cheatCfg.cheat ? '👁' : '🙈')] : []));
   }
@@ -267,20 +282,22 @@ export function mount(root, ctx, { training = false } = {}) {
   function renderControls() {
     if (phase === 'check') return;
     if (phase === 'bet' && !sess()) {
-      const can = G.bankroll >= RULES.buyIn;
+      const can = G.bankroll >= BUY_IN;
       controls.replaceChildren(h('div', { class: 'session-start' },
-        h('div', {}, `Bankroll ${money(G.bankroll)}. Each session buys in for ${money(RULES.buyIn)}; it ends at the stop-loss (the whole buy-in lost) or when you cash out.`),
+        h('div', {}, `Bankroll ${money(G.bankroll)}. Each session buys in for ${money(BUY_IN)}; it ends at the stop-loss (the whole buy-in lost) or when you cash out. `,
+          h('a', { href: '#settings' }, 'Change the buy-in')),
         can
-          ? h('button', { class: 'btn primary deal', onclick: () => { sfx.chip(4); startSession(); } }, `Buy in ${money(RULES.buyIn)}`, h('kbd', {}, 'Enter'))
-          : h('div', { class: 'row' }, h('span', { class: 'bad' }, 'Bankroll can’t cover a buy-in.'),
-            h('button', { class: 'btn', onclick: resetBankroll }, `Reset bankroll to ${money(RULES.bankroll)}`))));
+          ? h('button', { class: 'btn primary deal', onclick: () => { sfx.chip(4); startSession(); } }, `Buy in ${money(BUY_IN)}`, h('kbd', {}, 'Enter'))
+          : h('div', { class: 'row' }, h('span', { class: 'bad' }, 'Broke: your bankroll can’t cover a buy-in.'),
+            h('button', { class: 'btn', onclick: resetBankroll }, `Start over with ${money(S.money.bankroll)}`),
+            h('span', { class: 'muted small' }, `Going broke stays on your record (${G.busts || 0} so far).`))));
       return;
     }
     if (phase === 'bet') {
-      const chipColors = ['green', 'orange', 'purple'];
+      const chipColors = ['green', 'orange', 'purple', 'black', 'pink'];
       controls.replaceChildren(
         h('div', { class: 'bet-row' },
-          h('div', { class: 'bet-quick' }, BETS.map((b, i) => h('button', {
+          h('div', { class: 'bet-quick' }, BETS.slice(0, 5).map((b, i) => h('button', {
             class: `chip-btn ${chipColors[i]}${bet === b ? ' on' : ''}`, disabled: b > stack(), 'aria-label': `Bet ${money(b)}`,
             onclick: () => { setBet(b); sfx.chip(i + 1); render(); },
           }, h('span', { class: 'chip-face' }, String(b)), h('kbd', {}, String(i + 1))))),
@@ -294,7 +311,7 @@ export function mount(root, ctx, { training = false } = {}) {
             ? h('button', { class: 'btn sm', onclick: () => { practice.stack = PRACTICE; practice.buyIn = PRACTICE; sfx.chip(5); render(); } }, 'Reset chips')
             : h('button', { class: 'btn sm', onclick: () => endSession('Cashed out') }, `Cash out ${money(stack())}`),
           h('button', { class: 'link', onclick: newShoe }, 'Shuffle new shoe'),
-          h('span', { class: 'muted hide-sm' }, '1/2/3 or ↑/↓ set the bet')));
+          h('span', { class: 'muted hide-sm' }, `1–${Math.min(5, BETS.length)} or ↑/↓ set the bet`)));
       return;
     }
     const hint = training && cheatCfg.cheat ? cheatAdvice().key : null;
@@ -324,12 +341,12 @@ export function mount(root, ctx, { training = false } = {}) {
 
   // ---- sessions ----------------------------------------------------------
   function startSession() {
-    if (sess() || G.bankroll < RULES.buyIn) return;
-    G.bankroll -= RULES.buyIn;
-    G.session = { start: Date.now(), buyIn: RULES.buyIn, stack: RULES.buyIn, activeMs: 0, hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0 };
+    if (sess() || G.bankroll < BUY_IN) return;
+    G.bankroll -= BUY_IN;
+    G.session = { start: Date.now(), strategy: strat.id, buyIn: BUY_IN, stack: BUY_IN, activeMs: 0, hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0 };
     lastActivity = Date.now();
     notes = [];
-    note(`Session started: ${money(RULES.buyIn)} buy-in. Stop-loss at ${money(RULES.buyIn)} down.`, 'info');
+    note(`Session started: ${money(BUY_IN)} buy-in. Stop-loss at ${money(BUY_IN)} down.`, 'info');
     setBet(MIN);
     render();
     ctx.save();
@@ -346,7 +363,7 @@ export function mount(root, ctx, { training = false } = {}) {
       countAcc: s.checks ? Math.round((100 * s.checksCorrect) / s.checks) : null,
       decisionAcc: s.decisions ? Math.round((100 * s.correct) / s.decisions) : null,
       betAcc: s.bets ? Math.round((100 * s.betsCorrect) / s.bets) : null,
-      peeks: s.peeks, notes: reason,
+      peeks: s.peeks, notes: reason, strategy: s.strategy || strat.id,
     });
     G.session = null;
     note(`${reason}: ${money(s.stack - s.buyIn, { sign: true })} over ${s.hands} hand${s.hands === 1 ? '' : 's'}. Logged in Sessions.`, s.stack >= s.buyIn ? 'good' : 'bad');
@@ -356,8 +373,9 @@ export function mount(root, ctx, { training = false } = {}) {
   }
 
   function resetBankroll() {
-    G.bankroll = RULES.bankroll;
-    note(`Bankroll reset to ${money(RULES.bankroll)}.`, 'info');
+    G.bankroll = S.money.bankroll;
+    G.busts = (G.busts || 0) + 1;
+    note(`Bankroll reset to ${money(S.money.bankroll)}. That's ${G.busts} time${G.busts === 1 ? '' : 's'} going broke.`, 'info');
     render();
     ctx.save();
   }
@@ -375,10 +393,10 @@ export function mount(root, ctx, { training = false } = {}) {
     notes = [];
     fb.replaceChildren();
 
-    const want = betFor(tc());
+    const want = betAt(tc(), strat);
     const betOk = bet === want;
     count('bets', betOk);
-    note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at TC ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good bet' : 'warn bet');
+    note(betOk ? `✓ Bet ${money(bet)} fits the ramp.` : `✗ Ramp says ${money(want)} at ${idxName} ${signed(tc())} — you bet ${money(bet)}.`, betOk ? 'good bet' : 'warn bet');
 
     if (dealer.length) sfx.collect(); // sweep last round's cards
     sfx.chip(2);
@@ -497,7 +515,7 @@ export function mount(root, ctx, { training = false } = {}) {
 
   function revealHole() {
     const hole = dealer.find((c) => c.down);
-    if (hole) { hole.down = false; hole.flip = true; rc += hiLo(hole); sfx.flip(); }
+    if (hole) { hole.down = false; hole.flip = true; rc += tagOf(hole, strat); sfx.flip(); }
   }
 
   async function dealerPlay() {
@@ -556,10 +574,10 @@ export function mount(root, ctx, { training = false } = {}) {
     if (!alive) return;
     if (shoe.pastCut) {
       shoe.shuffle();
-      rc = 0;
+      rc = RC0;
       shoeFresh = false; // shuffled now, so the next deal doesn't shuffle again
-      bet = MIN; // fresh shoe, count 0: back to the table minimum
-      note(`Cut card reached (75%): new shoe. Count back to 0, bet back to ${money(MIN)}.`, 'info');
+      bet = MIN; // fresh shoe: back to the table minimum
+      note(`Cut card reached (75%): new shoe. Count back to ${signed(RC0)}, bet back to ${money(MIN)}.`, 'info');
       busy = true;
       // Let the last hand's result show for a moment, then the dealer sweeps the table
       // clear for the new shoe.
@@ -588,7 +606,7 @@ export function mount(root, ctx, { training = false } = {}) {
   // ---- grading -----------------------------------------------------------
   function grade(hd, a, o) {
     const up = upValue(dealer[0]);
-    const results = tcCandidates(rc, shoe.remaining).map((t) => correctAction(hd.cards, up, o, t));
+    const results = indexCandidates(rc, shoe.remaining, strat).map((t) => correctAction(hd.cards, up, o, t, strat));
     const ok = results.some((r) => r.action === a);
     const main = results[0];
     const devRes = results.find((r) => r.dev);
@@ -598,17 +616,17 @@ export function mount(root, ctx, { training = false } = {}) {
     if (ok) note(`✓ ${ACTIONS[a]} on ${label}${devRes ? ` — ${devRes.note}` : ''}`, 'good play');
     else {
       sfx.wrong();
-      note(`✗ ${ACTIONS[a]} on ${label}. Correct: ${ACTIONS[main.action]}${main.dev ? ` — ${main.note} (TC ${signed(tc())})` : ' (basic strategy)'}`, 'bad play');
+      note(`✗ ${ACTIONS[a]} on ${label}. Correct: ${ACTIONS[main.action]}${main.dev ? ` — ${main.note} (${idxName} ${signed(tc())})` : ' (basic strategy)'}`, 'bad play');
       T.misses[label] = (T.misses[label] || 0) + 1;
     }
   }
 
   function gradeInsurance(take) {
-    const answers = new Set(tcCandidates(rc, shoe.remaining).map((t) => insuranceCorrect(t)));
+    const answers = new Set(indexCandidates(rc, shoe.remaining, strat).map((t) => insuranceCorrect(t, strat)));
     const ok = answers.has(take);
     count('decisions', ok);
     count('devs', ok);
-    note(`${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance — take it at TC ≥ +3 (TC now ${signed(tc())}).`, ok ? 'good play' : 'bad play');
+    note(`${ok ? '✓' : '✗'} ${take ? 'Took' : 'Declined'} insurance — ${insRule} (${idxName} now ${signed(tc())}).`, ok ? 'good play' : 'bad play');
     if (!ok) T.misses.Insurance = (T.misses.Insurance || 0) + 1;
   }
 
@@ -616,7 +634,7 @@ export function mount(root, ctx, { training = false } = {}) {
     return new Promise((/** @type {(v?: unknown) => void} */ resolve) => {
       phase = 'check';
       const rcF = numberField('Running count');
-      const tcF = training ? null : numberField('True count');
+      const tcF = training || running ? null : numberField('True count');
       const result = h('div', { class: 'check-result' });
       const btn = h('button', { class: 'btn primary', type: 'submit' }, 'Check');
       let answered = false;
@@ -627,7 +645,7 @@ export function mount(root, ctx, { training = false } = {}) {
           if (answered) { resolve(); return; }
           answered = true;
           const rcOk = rcF.value === rc;
-          const cands = tcCandidates(rc, shoe.remaining);
+          const cands = indexCandidates(rc, shoe.remaining, strat);
           const tcOk = !tcF || cands.includes(tcF.value);
           count('checks', rcOk && tcOk);
           if (rcOk && tcOk) sfx.right(); else sfx.wrong();
@@ -658,14 +676,14 @@ export function mount(root, ctx, { training = false } = {}) {
   function newShoe() {
     if (phase !== 'bet') return;
     shoe.shuffle();
-    rc = 0;
+    rc = RC0;
     shoeFresh = false;
     busy = true; // no dealing until the new-shoe text is gone
     setTimeout(() => { busy = false; if (alive) render(); }, announceNewShoe('manual'));
     hands = []; dealer = []; others = [];
     notes = [];
     setBet(MIN);
-    note(`New shoe. Count starts at 0, bet back to ${money(MIN)}.`, 'info');
+    note(`New shoe. Count starts at ${signed(RC0)}, bet back to ${money(MIN)}.`, 'info');
     render();
   }
 
@@ -680,7 +698,7 @@ export function mount(root, ctx, { training = false } = {}) {
       if (k === ' ' || k === 'enter') { e.preventDefault(); run(deal); }
       else if (k === 'arrowup') { e.preventDefault(); setBet(bet + MIN); render(); }
       else if (k === 'arrowdown') { e.preventDefault(); setBet(bet - MIN); render(); }
-      else if (['1', '2', '3'].includes(k)) { setBet(BETS[Number(k) - 1]); sfx.chip(Number(k)); render(); }
+      else if (Number(k) >= 1 && Number(k) <= Math.min(5, BETS.length)) { setBet(BETS[Number(k) - 1]); sfx.chip(Number(k)); render(); }
     } else if (phase === 'insurance' && (k === 'y' || k === 'n')) {
       pendingInsurance?.(k === 'y');
     } else if (phase === 'play' && k.length === 1 && 'hsdpr'.includes(k)) {
@@ -690,7 +708,7 @@ export function mount(root, ctx, { training = false } = {}) {
   addEventListener('keydown', onKey);
 
   if (training) note(`Training table: ${money(PRACTICE)} in practice chips. Accuracy here is for this session only. Press X to toggle the cheat panel (count, true count, bet and the correct play).`, 'info');
-  else if (sess()) note(`Session in progress: ${money(stack())} stack. New shoe — count starts at 0.`, 'info');
+  else if (sess()) note(`Session in progress: ${money(stack())} stack. New shoe — count starts at ${signed(RC0)}.`, 'info');
   setBet(MIN);
   render();
 

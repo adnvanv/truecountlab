@@ -42,7 +42,13 @@ export interface Options { canDouble: boolean; canSplit: boolean; canSurrender?:
 export type Action = 'H' | 'S' | 'D' | 'P' | 'R';
 export interface Deviation {
   id: string; group: string; kind: string; name: string; tc: number; up: number;
-  total?: number; at: string; below: string;
+  total?: number; pair?: string; at: string; below: string;
+}
+/** A strategy (public/js/strategy.js): count, chart, index plays and bet ramp. */
+export interface Strat {
+  id: string; name: string; preset?: boolean;
+  count: { name: string; kind: 'true' | 'running'; irc?: number; values: Record<string, number> };
+  chart: unknown; devs: Deviation[]; ramp: { at: number; units: number }[];
 }
 export interface Shoe {
   cards: Card[];
@@ -78,11 +84,25 @@ export interface StrategyLib {
   upValue(card: Card): number;
   handLabel(cards: Card[]): string;
   upLabel(v: number): string;
-  insuranceCorrect(tc: number): boolean;
-  devNote(d: Deviation): string;
-  correctAction(cards: Card[], up: number, o: Options, tc?: number | null): { action: Action; basic: Action; dev: Deviation | null; note: string | null };
+  insuranceCorrect(tc: number, strat?: Strat): boolean;
+  devNote(d: Deviation, strat?: Strat): string;
+  correctAction(cards: Card[], up: number, o: Options, tc?: number | null, strat?: Strat): { action: Action; basic: Action; dev: Deviation | null; note: string | null };
+  tagOf(card: Card, strat?: Strat): number;
+  startCount(strat?: Strat): number;
+  countIndex(rc: number, cardsRemaining: number, strat?: Strat): number;
+  indexCandidates(rc: number, cardsRemaining: number, strat?: Strat): number[];
+  betAt(idx: number, strat?: Strat): number;
+  rampText(strat?: Strat): string;
+  indexName(strat?: Strat): 'TC' | 'RC';
+  DEFAULT_STRATEGY: Strat;
 }
-export interface GameLibs { cards: CardsLib; strategy: StrategyLib }
+export interface StrategiesLib {
+  PRESETS: Strat[];
+  DEFAULT_ID: string;
+  strategyById(id: string | undefined, mine?: Strat[]): Strat;
+  cleanStrategy(x: unknown): Strat | null;
+}
+export interface GameLibs { cards: CardsLib; strategy: StrategyLib; strategies: StrategiesLib }
 
 // ---- live play ------------------------------------------------------------------------
 /** One WebSocket connection. */
@@ -95,6 +115,8 @@ export interface Conn {
   guest: boolean;
   room: RoomLike | null;
   times: number[];
+  /** The strategy this player is graded on (a preset, or their own if signed in). */
+  strategy: Strat | null;
 }
 
 /** Someone in a room (kept for a while if their connection drops). */
@@ -134,6 +156,8 @@ export interface Game {
   readonly capacity: number;
   /** A battle is under way (always false for tables). */
   readonly playing: boolean;
+  /** Battles: the premade strategy everyone in the room plays. */
+  readonly strategyId?: string;
   /** Players seated (tables) or playing (battles). */
   seatCount(): number;
   /** Someone else could still take part. */

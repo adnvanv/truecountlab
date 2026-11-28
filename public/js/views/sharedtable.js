@@ -4,10 +4,14 @@
 import { h, cardEl, trayEl, numberField, signed, money, typingInField, pct, shoePopup } from '../ui.js';
 import { sfx, configure, shuffleShoe } from '../sfx.js';
 import * as online from '../online.js';
+import { activeStrategy } from '../store.js';
+import { rampBets } from '../strategy.js';
 
 const ACTS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
 const ICON = { H: '+', S: '✋', D: '×2', P: '⇹' };
 const SEATS = 5;
+/** Quick-bet chips: the bets your strategy's ramp uses (the table allows up to $200). */
+const chips = () => rampBets(activeStrategy()).filter((v) => v <= 200).slice(0, 5);
 
 // Casino chips seen from above, like the solo table's betting circle.
 function chipStack(amount) {
@@ -115,7 +119,7 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     const stat = (k, v) => h('div', { class: 'stat' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v));
     const y = g.you;
     const st = y?.stats || {};
-    const delta = y ? y.stack - 500 * y.buyIns : 0;
+    const delta = y ? y.stack - (g.buyIn || 500) * y.buyIns : 0;
     hud.replaceChildren(
       h('div', { class: 'hud-info' },
         y ? stat('Table chips', `${money(y.stack)} (${money(delta, { sign: true })})`) : stat('Watching', 'Pick an empty seat'),
@@ -238,15 +242,15 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     dockKey = key;
     if (!y) {
       return controls.replaceChildren(h('div', { class: 'st-msg muted' }, g.seats.some((s) => !s)
-        ? 'You’re watching. Press “Sit here” on an empty seat to play with $500 in table chips.'
+        ? `You’re watching. Press “Sit here” on an empty seat to play with ${money(g.buyIn || 500)} in table chips, graded on your strategy (${activeStrategy().name}).`
         : 'All five seats are taken. You can watch and chat until one opens.'));
     }
     if (y.bet) {
       return controls.replaceChildren(
         h('div', { class: 'st-prompt' }, 'Place your bet', timeBar()),
         h('div', { class: 'bet-row' },
-          h('div', { class: 'bet-quick' }, [25, 50, 75].map((v, i) => h('button', {
-            class: `chip-btn ${['green', 'orange', 'purple'][i]}`, disabled: v > y.bet.max, 'aria-label': `Bet $${v}`,
+          h('div', { class: 'bet-quick' }, chips().map((v, i) => h('button', {
+            class: `chip-btn ${['green', 'orange', 'purple', 'black', 'pink'][i]}`, disabled: v > y.bet.max, 'aria-label': `Bet $${v}`,
             onclick: () => bet(v, i + 1),
           }, h('span', { class: 'chip-face' }, `$${v}`), h('kbd', {}, String(i + 1))))),
           h('button', { class: 'btn ghost deal', onclick: () => online.game('sitout') }, 'Sit out this hand')));
@@ -267,23 +271,24 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     }
     if (y.check?.pending) {
       const rcF = numberField('Running count');
-      const tcF = numberField('True count');
+      const tcF = y.check.running ? null : numberField('True count'); // unbalanced counts have no true count
       controls.replaceChildren(h('form', {
         class: 'check',
-        onsubmit: (e) => { e.preventDefault(); if (rcF.value != null && tcF.value != null) online.game('check', { rc: rcF.value, tc: tcF.value }); },
+        onsubmit: (e) => { e.preventDefault(); if (rcF.value != null && (!tcF || tcF.value != null)) online.game('check', { rc: rcF.value, tc: tcF ? tcF.value : null }); },
       },
       h('div', { class: 'check-title' }, 'Count check ', timeBar()),
-      h('div', { class: 'check-fields' }, rcF.el, tcF.el, h('button', { class: 'btn primary', type: 'submit' }, 'Check'))));
+      h('div', { class: 'check-fields' }, rcF.el, tcF?.el, h('button', { class: 'btn primary', type: 'submit' }, 'Check'))));
       rcF.input.focus();
       return;
     }
     if (y.check && g.phase === 'check') {
       const c = y.check;
       return controls.replaceChildren(h('div', { class: 'st-msg' }, c.missed
-        ? h('span', { class: 'bad' }, `✗ Time ran out. Running ${signed(c.answer.rc)}, true ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`)
+        ? h('span', { class: 'bad' }, `✗ Time ran out. Running ${signed(c.answer.rc)}${c.running ? '' : `, true ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`}`)
         : h('span', {},
-        h('span', { class: c.rcOk ? 'good' : 'bad' }, `${c.rcOk ? '✓' : '✗'} Running ${signed(c.answer.rc)}`), ' · ',
-        h('span', { class: c.tcOk ? 'good' : 'bad' }, `${c.tcOk ? '✓' : '✗'} True ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`))));
+        h('span', { class: c.rcOk ? 'good' : 'bad' }, `${c.rcOk ? '✓' : '✗'} Running ${signed(c.answer.rc)}`),
+        c.running ? null : ' · ',
+        c.running ? null : h('span', { class: c.tcOk ? 'good' : 'bad' }, `${c.tcOk ? '✓' : '✗'} True ${signed(c.answer.tc)} (${signed(c.answer.rc)} ÷ ${c.answer.est})`))));
     }
     const turn = g.turn ? g.seats[g.turn.seat] : null;
     const msg = {
@@ -332,7 +337,7 @@ export function tableUI({ ctx, bar, chat, chatButton, onLeave }) {
     if (!g?.you || typingInField(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toUpperCase();
     const y = g.you;
-    if (y.moves && ACTS[k]) { e.preventDefault(); act(k); } else if (y.bet && ['1', '2', '3'].includes(k)) bet([25, 50, 75][Number(k) - 1], Number(k));
+    if (y.moves && ACTS[k]) { e.preventDefault(); act(k); } else if (y.bet && Number(k) >= 1 && Number(k) <= chips().length) bet(chips()[Number(k) - 1], Number(k));
     else if (y.insurance && (k === 'Y' || k === 'N')) online.game('insurance', { take: k === 'Y' });
   }
   document.addEventListener('keydown', onKey);

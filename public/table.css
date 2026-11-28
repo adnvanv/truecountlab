@@ -117,6 +117,8 @@
 .chip-btn.green { --c: #1f8a4c; }
 .chip-btn.orange { --c: #d9711c; }
 .chip-btn.purple { --c: #6b3fb5; }
+.chip-btn.black { --c: #2a2a2e; }
+.chip-btn.pink { --c: #c2357a; }
 .chip-btn:hover:not(:disabled) { transform: translateY(-3px); }
 .chip-btn.on { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--gold), 0 10px 20px rgba(0, 0, 0, 0.4); color: #fff; border: 0; }
 .chip-btn, .chip-btn.on {

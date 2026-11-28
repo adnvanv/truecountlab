@@ -5,6 +5,7 @@
 // tab's sessionStorage, so it survives a sign-in redirect). Creating an account keeps it.
 import { RULES } from './cards.js';
 import { tally } from './tally.js';
+import { strategyById, cleanStrategy, DEFAULT_ID } from './strategies.js';
 
 const KEY = 'bjtrainer.v2'; // progress document
 const META_KEY = 'tcl.sync'; // { owner, rev, pending }: who this copy belongs to and its sync state
@@ -23,6 +24,9 @@ export const DEFAULT_SETTINGS = {
   deviation: { auto: true, mode: 'mixed', focus: true },
   training: { cheat: true },
   calc: { bankroll: 3000, unit: 25, spread: 3, hands: 80 },
+  strategy: DEFAULT_ID, // which strategy every mode grades against (accounts can pick)
+  money: { bankroll: RULES.bankroll, buyIn: RULES.buyIn, practice: 5000 }, // solo table and training chips
+  tips: {}, // first-time tips already shown, by mode
 };
 
 export function freshStats() {
@@ -32,6 +36,8 @@ export function freshStats() {
     deviation: { runs: [] },
     training: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
     table: { hands: 0, decisions: 0, correct: 0, devs: 0, devsCorrect: 0, checks: 0, checksCorrect: 0, bets: 0, betsCorrect: 0, peeks: 0, misses: {} },
+    // Accuracy per strategy, every mode together: '<id>:plays', '<id>:playsOk', '<id>:counts', '<id>:countsOk'.
+    byStrategy: {},
   };
 }
 
@@ -56,10 +62,15 @@ function normalize(raw) {
     bankroll: typeof raw?.bankroll === 'number' ? raw.bankroll : RULES.bankroll,
     session: raw?.session || null,
     sessions: Array.isArray(raw?.sessions) ? raw.sessions : [],
+    busts: Number(raw?.busts) || 0, // times the solo bankroll ran out and was reset
+    // Custom strategies (accounts only), each with the time it was last edited.
+    strategies: Array.isArray(raw?.strategies)
+      ? raw.strategies.map((x) => { const c = cleanStrategy(x); return c && { ...c, updatedAt: Number(x.updatedAt) || 0 }; }).filter(Boolean)
+      : [],
   };
 }
 
-const FIELDS = ['savedAt', 'epochs', 'settings', 'stats', 'bankroll', 'session', 'sessions'];
+const FIELDS = ['savedAt', 'epochs', 'settings', 'stats', 'bankroll', 'session', 'sessions', 'busts', 'strategies'];
 const payload = () => Object.fromEntries(FIELDS.map((k) => [k, state[k]]));
 
 // Swap in a whole new document, keeping the same state object (the app holds on to it).
@@ -115,6 +126,14 @@ function mergeInto(target, src, mode) {
       for (const [k, v] of Object.entries(bucket.misses)) t.misses[k] = num(t.misses[k], v);
     }
   }
+  // Strategies: the most recently edited copy of each.
+  for (const s of src.strategies || []) {
+    const i = target.strategies.findIndex((x) => x.id === s.id);
+    if (i < 0) target.strategies.push(s);
+    else if ((s.updatedAt || 0) > (target.strategies[i].updatedAt || 0)) target.strategies[i] = s;
+  }
+  if (mode === 'max') target.busts = Math.max(target.busts || 0, src.busts || 0);
+  else target.busts = (target.busts || 0) + (src.busts || 0);
   const ids = new Set(target.sessions.map((s) => s.id));
   for (const s of src.sessions) if (!ids.has(s.id)) target.sessions.push(s);
   target.sessions.sort((a, b) => a.t - b.t);
@@ -230,7 +249,7 @@ export async function adoptUser(u, { quiet = false } = {}) {
 export function signOut() {
   user = null;
   clearTimeout(timer);
-  replaceContents(normalize({ settings: state.settings }));
+  replaceContents(normalize({ settings: { ...state.settings, strategy: DEFAULT_ID } }));
   meta = { owner: null, rev: 0, pending: false };
   writeLocal();
   emit();
@@ -293,6 +312,17 @@ const saveListeners = new Set();
 export const onSave = (fn) => { saveListeners.add(fn); return () => saveListeners.delete(fn); };
 /** The current stats (this visit's, for a guest). */
 export const activityStats = () => state.stats;
+
+/** The strategy every mode grades against. Picking one is for accounts; guests use the default. */
+export const activeStrategy = () => strategyById(user || meta.owner != null ? state.settings.strategy : DEFAULT_ID, state.strategies);
+
+/** Count a graded play or count answer toward the active strategy's accuracy. @param {'plays' | 'counts'} kind @param {boolean} ok */
+export function scoreFor(kind, ok) {
+  const b = state.stats.byStrategy;
+  const id = activeStrategy().id;
+  b[`${id}:${kind}`] = (b[`${id}:${kind}`] || 0) + 1;
+  if (ok) b[`${id}:${kind}Ok`] = (b[`${id}:${kind}Ok`] || 0) + 1;
+}
 
 export function addRun(bucket, run) {
   tally('drill');

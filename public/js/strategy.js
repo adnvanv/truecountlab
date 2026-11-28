@@ -1,6 +1,9 @@
-// Basic strategy for 6 decks, S17, DAS, no surrender — plus the eight count
-// deviations this trainer drills.
-import { rankKey, bjValue } from './cards.js';
+// The rules engine: basic strategy, count deviations, the count itself and the bet ramp,
+// for any strategy (see strategies.js for the premade ones and custom ones). Without a
+// strategy argument everything uses the default: TrueCountLab's own Hi-Lo strategy for
+// 6 decks, S17, DAS, no surrender.
+import { rankKey, bjValue, RULES } from './cards.js';
+import { COUNTS } from './presets.js';
 
 /** @typedef {import('./cards.js').Card} Card */
 /** @typedef {{ canDouble: boolean, canSplit: boolean, canSurrender?: boolean }} Options */
@@ -9,8 +12,21 @@ import { rankKey, bjValue } from './cards.js';
 /**
  * @typedef {object} Deviation
  * @property {string} id @property {string} group @property {'ins' | 'play' | 'surrender'} kind @property {string} name
- * @property {number} [total] @property {number} up @property {number} tc the index
+ * @property {number} [total] hard total (plays and surrenders)
+ * @property {string} [pair] rank key of a pair this play splits (e.g. 'T' for 10,10 vs 5)
+ * @property {number} up @property {number} tc the index (a true count, or a running count for unbalanced counts)
  * @property {string} at the play at or above the index @property {string} below the play under it
+ */
+/** @typedef {import('./presets.js').CountSystem} CountSystem */
+/**
+ * @typedef {object} Strategy
+ * @property {string} id @property {string} name @property {string} [desc]
+ * @property {boolean} [preset] one of the premade strategies (custom ones are false)
+ * @property {CountSystem} count
+ * @property {{ hard: Record<number, Code[]>, soft: Record<number, Code[]>, pairs: Record<string, Code[]> }} chart
+ * @property {Deviation[]} devs index plays, insurance and surrenders
+ * @property {{ at: number, units: number }[]} ramp bet `units` x the table minimum at counts >= `at` (1 unit below the first step)
+ * @property {{ flat: number, ramp: number, hands: number }} [edge] simulated player edge, % of money bet
  */
 
 /** @type {Record<string, string>} */
@@ -110,19 +126,20 @@ export function cellOf(cards, up, canSplit = true) {
 /** @param {{ group: string, row: string, col: string }} c */
 export const cellKey = (c) => `${c.group}:${c.row}:${c.col}`;
 
-/** @param {Card[]} cards @param {number} up dealer upcard value (11 = ace) @param {Options} o */
-export function basicStrategy(cards, up, o) {
+/** @param {Card[]} cards @param {number} up dealer upcard value (11 = ace) @param {Options} o @param {Strategy} [strat] */
+export function basicStrategy(cards, up, o, strat = DEFAULT_STRATEGY) {
   const col = up - 2;
+  const { hard, soft: softRows, pairs } = strat.chart;
   const { total, soft } = handTotal(cards);
   if (o.canSplit && isPair(cards)) {
-    const code = PAIRS[rankKey(cards[0].rank)][col];
+    const code = pairs[rankKey(cards[0].rank)][col];
     return { action: resolve(code, o), code, kind: 'pair', total, soft };
   }
   if (soft) {
-    const code = total >= 20 ? 'S' : SOFT[total][col];
+    const code = total >= 21 ? 'S' : softRows[Math.max(12, total)]?.[col] ?? 'S';
     return { action: resolve(code, o), code, kind: 'soft', total, soft };
   }
-  const code = total >= 18 ? 'S' : HARD[Math.max(8, total)][col];
+  const code = total >= 18 ? 'S' : hard[Math.max(8, total)][col];
   return { action: resolve(code, o), code, kind: 'hard', total, soft };
 }
 
@@ -157,19 +174,26 @@ export const DEVS = [
   { id: 'R15v9', group: 'surrender', kind: 'surrender', name: '15 vs 9', total: 15, up: 9, tc: 2, at: 'R', below: 'play' },
   { id: 'R15vA', group: 'surrender', kind: 'surrender', name: '15 vs A', total: 15, up: 11, tc: 1, at: 'R', below: 'play' },
 ];
-/** @param {boolean} surrender */
-export const activeDevs = (surrender) => DEVS.filter((d) => surrender || d.kind !== 'surrender');
+/** @param {boolean} surrender @param {Strategy} [strat] */
+export const activeDevs = (surrender, strat = DEFAULT_STRATEGY) => strat.devs.filter((d) => surrender || d.kind !== 'surrender');
 
-/** @param {Deviation} d */
-export function devNote(d) {
-  if (d.kind === 'ins') return `Insurance: take at TC ≥ ${signed(d.tc)}`;
-  if (d.kind === 'surrender') return `${d.name}: Surrender at TC ≥ ${signed(d.tc)}`;
-  if (d.group === 'low') return `${d.name}: Hit at TC ≤ ${signed(d.tc - 1)}, otherwise Stand`;
-  return `${d.name}: ${ACTIONS[d.at]} at TC ≥ ${signed(d.tc)}, otherwise ${ACTIONS[d.below]}`;
+/** 'TC' or 'RC': what this strategy's indexes and bets are keyed on. @param {Strategy} [strat] */
+export const indexName = (strat = DEFAULT_STRATEGY) => (strat.count.kind === 'running' ? 'RC' : 'TC');
+
+/** @param {Deviation} d @param {Strategy} [strat] */
+export function devNote(d, strat = DEFAULT_STRATEGY) {
+  const n = indexName(strat);
+  if (d.kind === 'ins') return `Insurance: take at ${n} ≥ ${signed(d.tc)}`;
+  if (d.kind === 'surrender') return `${d.name}: Surrender at ${n} ≥ ${signed(d.tc)}`;
+  if (d.group === 'low') return `${d.name}: Hit at ${n} ≤ ${signed(d.tc - 1)}, otherwise Stand`;
+  return `${d.name}: ${ACTIONS[d.at]} at ${n} ≥ ${signed(d.tc)}, otherwise ${ACTIONS[d.below]}`;
 }
 
-/** @param {number} tc */
-export const insuranceCorrect = (tc) => tc >= 3;
+/** @param {number} tc @param {Strategy} [strat] */
+export function insuranceCorrect(tc, strat = DEFAULT_STRATEGY) {
+  const d = strat.devs.find((x) => x.kind === 'ins');
+  return d ? tc >= d.tc : false;
+}
 
 // Correct play, applying deviations when a true count is given.
 // o = { canDouble, canSplit, canSurrender }. Basic strategy itself never surrenders;
@@ -180,20 +204,92 @@ export const insuranceCorrect = (tc) => tc >= 3;
  * @param {number | null} [tc] the true count; without one, plain basic strategy
  * @returns {{ action: Action, basic: Action, info: ReturnType<typeof basicStrategy>, dev: Deviation | null, note: string | null }}
  */
-export function correctAction(cards, up, o, tc = null) {
-  const b = basicStrategy(cards, up, o);
+export function correctAction(cards, up, o, tc = null, strat = DEFAULT_STRATEGY) {
+  const b = basicStrategy(cards, up, o, strat);
   const res = { action: b.action, basic: b.action, info: b, dev: null, note: null };
-  if (tc == null || b.soft || (b.kind === 'pair' && b.action === 'P')) return res;
+  if (tc == null) return res;
+  const devs = strat.devs;
+  // A pair deviation (10,10 vs 5: split at +5) decides the hand on its own.
+  if (o.canSplit && isPair(cards)) {
+    const pk = rankKey(cards[0].rank);
+    const pd = devs.find((x) => x.kind === 'play' && x.pair === pk && x.up === up);
+    if (pd) return { ...res, action: /** @type {Action} */ (tc >= pd.tc ? pd.at : pd.below), dev: pd, note: devNote(pd, strat) };
+  }
+  if (b.soft || (b.kind === 'pair' && b.action === 'P')) return res;
   let surrDev = null;
   if (o.canSurrender) {
-    surrDev = DEVS.find((x) => x.kind === 'surrender' && x.total === b.total && x.up === up);
-    if (surrDev && tc >= surrDev.tc) return { ...res, action: 'R', dev: surrDev, note: devNote(surrDev) };
+    surrDev = devs.find((x) => x.kind === 'surrender' && x.total === b.total && x.up === up);
+    if (surrDev && tc >= surrDev.tc) return { ...res, action: 'R', dev: surrDev, note: devNote(surrDev, strat) };
   }
-  const d = DEVS.find((x) => x.kind === 'play' && x.total === b.total && x.up === up);
-  if (!d) return surrDev ? { ...res, dev: surrDev, note: devNote(surrDev) } : res;
-  let a = /** @type {Action} */ (tc >= d.tc ? d.at : d.below); // play deviations are always H, S or D
+  const d = devs.find((x) => x.kind === 'play' && !x.pair && x.total === b.total && x.up === up);
+  if (!d) return surrDev ? { ...res, dev: surrDev, note: devNote(surrDev, strat) } : res;
+  let a = /** @type {Action} */ (tc >= d.tc ? d.at : d.below); // hard-total deviations are H, S or D
   if (a === 'D' && !o.canDouble) a = 'H';
-  return { ...res, action: a, dev: d, note: devNote(d) };
+  return { ...res, action: a, dev: d, note: devNote(d, strat) };
 }
 
+// ---- the count and the bet ramp ------------------------------------------------------
+/** What a card adds to this strategy's count. @param {Card} card @param {Strategy} [strat] */
+export const tagOf = (card, strat = DEFAULT_STRATEGY) => strat.count.values[rankKey(card.rank)] || 0;
+/** The running count at the start of a shoe (0, or the IRC of an unbalanced count). @param {Strategy} [strat] */
+export const startCount = (strat = DEFAULT_STRATEGY) => (strat.count.kind === 'running' ? strat.count.irc || 0 : 0);
+/** Decks remaining as a player estimates them: nearest half deck, at least 1/2. @param {number} cardsRemaining */
+const decksLeft = (cardsRemaining) => Math.max(0.5, Math.round((cardsRemaining / 52) * 2) / 2);
+/**
+ * The number this strategy bets and deviates on: the true count (running count / decks
+ * left, rounded down) for balanced counts, the running count itself for unbalanced ones.
+ * @param {number} rc @param {number} cardsRemaining @param {Strategy} [strat]
+ */
+export function countIndex(rc, cardsRemaining, strat = DEFAULT_STRATEGY) {
+  if (strat.count.kind === 'running') return rc;
+  return Math.floor(rc / decksLeft(cardsRemaining)) || 0;
+}
+/**
+ * Counts a careful player could reach: estimating the decks a few cards either side of
+ * the exact position can land on a neighbouring half deck. Running counts are exact.
+ * @param {number} rc @param {number} cardsRemaining @param {Strategy} [strat] @returns {number[]}
+ */
+export function indexCandidates(rc, cardsRemaining, strat = DEFAULT_STRATEGY) {
+  if (strat.count.kind === 'running') return [rc];
+  const out = [countIndex(rc, cardsRemaining, strat)];
+  for (const d of [-6, 6]) out.push(countIndex(rc, Math.max(1, cardsRemaining + d), strat));
+  return [...new Set(out)];
+}
+/** Bet, in units of the table minimum, at this count. @param {number} idx @param {Strategy} [strat] */
+export function betUnits(idx, strat = DEFAULT_STRATEGY) {
+  let units = 1;
+  for (const step of strat.ramp) if (idx >= step.at) units = step.units;
+  return units;
+}
+/** @param {number} idx @param {Strategy} [strat] */
+export const betAt = (idx, strat = DEFAULT_STRATEGY) => betUnits(idx, strat) * RULES.minBet;
+/** Every bet the ramp uses, smallest first (the table's quick-bet chips). @param {Strategy} [strat] */
+export const rampBets = (strat = DEFAULT_STRATEGY) => [...new Set([1, ...strat.ramp.map((r) => r.units)])].sort((a, b) => a - b).map((u) => u * RULES.minBet);
+/** "$25 at TC <= +1, $50 at +2 to +3, $75 at +4 and up". @param {Strategy} [strat] */
+export function rampText(strat = DEFAULT_STRATEGY) {
+  const n = indexName(strat);
+  const steps = [...strat.ramp].sort((a, b) => a.at - b.at);
+  if (!steps.length) return `Flat $${RULES.minBet} on every hand`;
+  const parts = [`$${RULES.minBet} at ${n} ≤ ${signed(steps[0].at - 1)}`];
+  steps.forEach((st, i) => {
+    const next = steps[i + 1];
+    const range = !next ? `${signed(st.at)} and up` : next.at - st.at === 1 ? signed(st.at) : `${signed(st.at)} to ${signed(next.at - 1)}`;
+    parts.push(`$${st.units * RULES.minBet} at ${range}`);
+  });
+  return parts.join(', ');
+}
+
+
 export const CODE_TEXT = { H: 'Hit', S: 'Stand', D: 'Double (hit if you can’t)', Ds: 'Double (stand if you can’t)', P: 'Split' };
+
+/** TrueCountLab's own strategy: the charts and deviations above, Hi-Lo, $25/$50/$75. @type {Strategy} */
+export const DEFAULT_STRATEGY = {
+  id: 'tcl',
+  name: 'TrueCountLab',
+  desc: 'Hi-Lo with the full basic strategy chart, 22 index plays and a $25 to $75 ramp. The default.',
+  preset: true,
+  count: COUNTS.hilo,
+  chart: { hard: HARD, soft: SOFT, pairs: PAIRS },
+  devs: DEVS,
+  ramp: [{ at: 2, units: 2 }, { at: 4, units: 3 }],
+};

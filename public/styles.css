@@ -482,3 +482,36 @@ tr.dim td { opacity: 0.45; }
   .actions.five { display: grid; grid-template-columns: repeat(3, 1fr); }
   .actions.five .btn.act { min-width: 0; }
 }
+
+/* Which strategy a mode grades against */
+.strat-tag { display: inline-flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; font-size: 0.85rem; padding: 0.2rem 0.7rem; margin: -0.3rem 0 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink); text-decoration: none; }
+.strat-tag:hover { border-color: rgba(227, 188, 95, 0.5); }
+
+/* Strategy page */
+.strategy-view > h2 { margin: 1.2rem 0 0.6rem; }
+.strat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 0.8rem; }
+.strat-card { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; }
+.strat-card.active { border-color: rgba(227, 188, 95, 0.6); box-shadow: 0 0 0 1px rgba(227, 188, 95, 0.25) inset; }
+.strat-card-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.strat-card h3 { margin: 0; font-size: 1.05rem; }
+.strat-card p { margin: 0; }
+.strat-card .row { margin-top: auto; padding-top: 0.3rem; flex-wrap: wrap; gap: 0.4rem; }
+.strat-facts { display: flex; flex-wrap: wrap; gap: 0.3rem; font-size: 0.8rem; }
+.strat-facts span { padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+.strat-edge { font-size: 0.9rem; }
+.strat-acc { font-size: 0.85rem; color: var(--muted); }
+.strat-detail { margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--line); scroll-margin-top: calc(var(--topbar-h, 60px) + 12px); }
+.strat-detail h2 { margin: 0; }
+.strat-name { font-size: 1.2rem; font-weight: 700; max-width: 22rem; }
+.edge-live { margin: 0.6rem 0; font-size: 0.95rem; }
+.small { font-size: 0.82rem; }
+.count-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem; }
+.count-tag { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-width: 3rem; padding: 0.35rem 0.4rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.count-tag > span { color: var(--muted); font-size: 0.8rem; }
+.count-tag .pos { color: var(--good); } .count-tag .neg { color: var(--bad); }
+.text-input.mini { width: 4.2rem; padding: 0.15rem 0.35rem; }
+.chart.editable td { cursor: pointer; user-select: none; }
+.chart.editable td:hover { outline: 2px solid var(--gold); outline-offset: -2px; }
+.chart td.changed { box-shadow: inset 0 0 0 2px #fff; }
+.ramp-edit { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+.btn.danger.ghost, .btn.ghost.danger { color: var(--bad); }

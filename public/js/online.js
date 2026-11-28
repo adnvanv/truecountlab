@@ -60,7 +60,7 @@ export function connect() {
   ws = sock;
   sock.addEventListener('open', () => {
     if (ws !== sock) return;
-    sock.send(JSON.stringify({ t: 'hello', guestToken: token(), guestName: guestName() }));
+    sock.send(JSON.stringify({ t: 'hello', guestToken: token(), guestName: guestName(), strategy: strategyMsg() }));
   });
   sock.addEventListener('message', (e) => {
     if (ws !== sock) return;
@@ -108,13 +108,18 @@ export function send(msg) {
 // Change the guest nickname (only while not in a room).
 export function setGuestName(name) {
   write(NAME_KEY, name);
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'hello', guestToken: token(), guestName: name }));
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'hello', guestToken: token(), guestName: name, strategy: strategyMsg() }));
   else connect();
 }
 
 export function join(code) { room = String(code).toUpperCase(); send({ t: 'join', code: room }); }
 export function leave() { const code = room; room = null; send({ t: 'leave', code }); }
 export const game = (a, extra = {}) => send({ t: 'game', a, ...extra });
+
+// The server grades with your strategy: a premade one by id, your own in full.
+const strategyMsg = () => { const s = store.activeStrategy(); return s.preset ? s.id : s; };
+/** Tell the server you switched strategies (it applies from the next round). */
+export function strategyChanged() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'strategy', strategy: strategyMsg() })); }
 
 // Signing in or out changes who you are: start a fresh connection.
 let lastUser = store.currentUser()?.id ?? null;
